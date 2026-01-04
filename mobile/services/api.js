@@ -16,7 +16,18 @@ export const productService = {
     if (category) params.category = category;
     if (search) params.search = search;
     
+    // DEBUG: Log API call
+    console.log('🌐 [API] productService.getAll called with params:', params);
+    console.log('🌐 [API] Full URL will be:', `${API_BASE_URL}${API_ENDPOINTS.PRODUCTS}?${new URLSearchParams(params).toString()}`);
+    
     const response = await api.get(API_ENDPOINTS.PRODUCTS, { params });
+    
+    // DEBUG: Log response
+    console.log('🌐 [API] Response received:', {
+      totalElements: response.data.totalElements,
+      productsCount: response.data.content?.length || 0
+    });
+    
     return response.data;
   },
   

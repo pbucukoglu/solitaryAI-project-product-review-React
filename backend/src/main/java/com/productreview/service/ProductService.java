@@ -30,11 +30,20 @@ public class ProductService {
     public Page<ProductDTO> getAllProducts(Pageable pageable, String category, String search) {
         Page<Product> products;
         
-        if (category != null && !category.isEmpty()) {
+        boolean hasCategory = category != null && !category.isEmpty();
+        boolean hasSearch = search != null && !search.isEmpty();
+        
+        if (hasCategory && hasSearch) {
+            // Both category and search: use combined query
+            products = productRepository.findByCategoryAndSearch(category, search, pageable);
+        } else if (hasCategory) {
+            // Only category filter
             products = productRepository.findByCategory(category, pageable);
-        } else if (search != null && !search.isEmpty()) {
+        } else if (hasSearch) {
+            // Only search
             products = productRepository.searchProducts(search, pageable);
         } else {
+            // No filters: get all
             products = productRepository.findAll(pageable);
         }
         

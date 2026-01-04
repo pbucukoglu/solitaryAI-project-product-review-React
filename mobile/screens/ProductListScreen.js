@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -28,21 +28,53 @@ const ProductListScreen = ({ navigation }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [categories] = useState(['Electronics', 'Clothing', 'Books', 'Home & Kitchen', 'Sports & Outdoors']);
 
-  useEffect(() => {
-    loadProducts(0, false);
-  }, [selectedCategory, sortBy, sortDir]);
-
-  const loadProducts = async (pageNum = 0, append = false) => {
+  const loadProducts = async (pageNum = 0, append = false, overrideFilters = null) => {
     try {
       setLoading(pageNum === 0);
+      // Use override filters if provided (from timer), otherwise use current state
+      const filters = overrideFilters || {
+        sortBy,
+        sortDir,
+        selectedCategory,
+        searchQuery
+      };
+      
+      // DEBUG: Log what we're sending to API
+      const debugInfo = {
+        pageNum,
+        append,
+        overrideFilters: overrideFilters !== null,
+        filters: {
+          sortBy: filters.sortBy,
+          sortDir: filters.sortDir,
+          category: filters.selectedCategory,
+          search: filters.searchQuery
+        },
+        currentState: {
+          sortBy,
+          sortDir,
+          selectedCategory,
+          searchQuery
+        }
+      };
+      console.log('🔍 [ProductList] loadProducts called with:', JSON.stringify(debugInfo, null, 2));
+      
       const response = await productService.getAll(
         pageNum, 
         20, 
-        sortBy, 
-        sortDir, 
-        selectedCategory, 
-        searchQuery || null
+        filters.sortBy, 
+        filters.sortDir, 
+        filters.selectedCategory, 
+        filters.searchQuery || null
       );
+      
+      // DEBUG: Log response
+      console.log('✅ [ProductList] API Response:', {
+        totalElements: response.totalElements,
+        productsCount: response.content?.length || 0,
+        firstProduct: response.content?.[0]?.name || 'none',
+        allProductNames: response.content?.map(p => p.name).join(', ') || 'none'
+      });
       
       if (append) {
         setProducts(prev => [...prev, ...response.content]);
@@ -61,6 +93,69 @@ const ProductListScreen = ({ navigation }) => {
     }
   };
 
+  // Track previous values to detect changes
+  const prevFiltersRef = useRef({ selectedCategory: null, sortBy: 'id', sortDir: 'ASC', searchQuery: '' });
+  const isFirstMount = useRef(true);
+  
+  // Initial load on mount
+  useEffect(() => {
+    loadProducts(0, false);
+    isFirstMount.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only on mount
+  
+  // Combined effect: Load products when filters, sort, or search changes
+  useEffect(() => {
+    // Skip on first mount (handled above)
+    if (isFirstMount.current) {
+      return;
+    }
+    const currentFilters = {
+      selectedCategory: selectedCategory,  // Fixed: use selectedCategory instead of category
+      sortBy: sortBy,
+      sortDir: sortDir,
+      searchQuery: searchQuery || ''  // Fixed: use searchQuery instead of search
+    };
+
+    // Check if filters actually changed
+    const filtersChanged = 
+      prevFiltersRef.current.selectedCategory !== currentFilters.selectedCategory ||
+      prevFiltersRef.current.sortBy !== currentFilters.sortBy ||
+      prevFiltersRef.current.sortDir !== currentFilters.sortDir ||
+      prevFiltersRef.current.searchQuery !== currentFilters.searchQuery;
+
+    if (!filtersChanged) {
+      return; // No change, skip
+    }
+
+    // Determine if this is a search change (user typing)
+    const isSearchChange = prevFiltersRef.current.searchQuery !== currentFilters.searchQuery;
+    
+    // DEBUG: Log filter changes
+    console.log('🔄 [ProductList] Filter change detected:', {
+      isSearchChange,
+      previous: prevFiltersRef.current,
+      current: currentFilters,
+      willDebounce: isSearchChange && (currentFilters.searchQuery?.length || 0) > 0
+    });
+    
+    // Update ref AFTER capturing values for timer
+    prevFiltersRef.current = currentFilters;
+
+    // Debounce only for search, immediate for filters/sort
+    // Pass current filters directly to avoid closure issues
+    const delay = isSearchChange && (currentFilters.searchQuery?.length || 0) > 0 ? 500 : 0;
+    console.log(`⏱️ [ProductList] Setting timer with ${delay}ms delay`);
+    
+    const timer = setTimeout(() => {
+      console.log('⏱️ [ProductList] Timer fired, calling loadProducts with:', currentFilters);
+      loadProducts(0, false, currentFilters);
+    }, delay);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory, sortBy, sortDir, searchQuery]);
+
   const onRefresh = () => {
     setRefreshing(true);
     loadProducts(0, false);
@@ -73,6 +168,8 @@ const ProductListScreen = ({ navigation }) => {
   };
 
   const handleSearch = () => {
+    // Reset to first page when searching (called on Enter key)
+    setPage(0);
     loadProducts(0, false);
   };
 
