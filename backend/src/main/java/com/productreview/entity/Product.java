@@ -32,6 +32,9 @@ public class Product {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
     
+    @Column(name = "image_urls", columnDefinition = "TEXT")
+    private String imageUrls; // JSON array of image URLs
+    
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Review> reviews;
     

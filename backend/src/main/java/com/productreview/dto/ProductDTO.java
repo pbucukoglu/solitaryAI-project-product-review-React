@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -15,6 +16,7 @@ public class ProductDTO {
     private String description;
     private String category;
     private BigDecimal price;
+    private List<String> imageUrls;
     private Double averageRating;
     private Long reviewCount;
 }

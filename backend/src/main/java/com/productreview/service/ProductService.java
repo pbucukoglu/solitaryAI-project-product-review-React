@@ -1,5 +1,7 @@
 package com.productreview.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.productreview.dto.ProductDTO;
 import com.productreview.dto.ProductDetailDTO;
 import com.productreview.entity.Product;
@@ -12,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,6 +25,7 @@ public class ProductService {
     
     private final ProductRepository productRepository;
     private final ReviewRepository reviewRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
     
     public Page<ProductDTO> getAllProducts(Pageable pageable, String category, String search) {
         Page<Product> products;
@@ -44,9 +48,21 @@ public class ProductService {
         return convertToDetailDTO(product);
     }
     
+    private List<String> parseImageUrls(String imageUrlsJson) {
+        if (imageUrlsJson == null || imageUrlsJson.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        try {
+            return objectMapper.readValue(imageUrlsJson, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+    
     private ProductDTO convertToDTO(Product product) {
         Double avgRating = reviewRepository.findAverageRatingByProductId(product.getId());
         Long reviewCount = reviewRepository.countByProductId(product.getId());
+        List<String> imageUrls = parseImageUrls(product.getImageUrls());
         
         return new ProductDTO(
                 product.getId(),
@@ -54,6 +70,7 @@ public class ProductService {
                 product.getDescription(),
                 product.getCategory(),
                 product.getPrice(),
+                imageUrls,
                 avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : 0.0,
                 reviewCount != null ? reviewCount : 0L
         );
@@ -63,6 +80,7 @@ public class ProductService {
         List<Review> reviews = reviewRepository.findByProductId(product.getId());
         Double avgRating = reviewRepository.findAverageRatingByProductId(product.getId());
         Long reviewCount = reviewRepository.countByProductId(product.getId());
+        List<String> imageUrls = parseImageUrls(product.getImageUrls());
         
         List<com.productreview.dto.ReviewDTO> reviewDTOs = reviews.stream()
                 .map(review -> new com.productreview.dto.ReviewDTO(
@@ -81,6 +99,7 @@ public class ProductService {
                 product.getDescription(),
                 product.getCategory(),
                 product.getPrice(),
+                imageUrls,
                 avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : 0.0,
                 reviewCount != null ? reviewCount : 0L,
                 reviewDTOs

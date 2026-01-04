@@ -28,6 +28,9 @@
         "INTERNET"
       ]
     },
+    "extra": {
+      "apiUrl": "http://YOUR_PRODUCTION_API_URL:8080"
+    },
     "web": {
       "favicon": "./assets/favicon.png"
     }

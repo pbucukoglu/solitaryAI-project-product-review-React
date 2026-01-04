@@ -14,7 +14,7 @@ import {
 import { reviewService } from '../services/api';
 
 const AddReviewScreen = ({ route, navigation }) => {
-  const { productId, onReviewAdded } = route.params;
+  const { productId } = route.params;
   const [comment, setComment] = useState('');
   const [rating, setRating] = useState(5);
   const [reviewerName, setReviewerName] = useState('');
@@ -44,9 +44,7 @@ const AddReviewScreen = ({ route, navigation }) => {
         {
           text: 'OK',
           onPress: () => {
-            if (onReviewAdded) {
-              onReviewAdded();
-            }
+            // Navigation will automatically trigger useFocusEffect in ProductDetailScreen
             navigation.goBack();
           },
         },

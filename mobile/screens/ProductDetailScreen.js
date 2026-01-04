@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,20 +8,23 @@ import {
   TouchableOpacity,
   Alert,
   FlatList,
+  Image,
+  Dimensions,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { productService, reviewService } from '../services/api';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const ProductDetailScreen = ({ route, navigation }) => {
   const { productId } = route.params;
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState([]);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const imageListRef = useRef(null);
 
-  useEffect(() => {
-    loadProductDetails();
-  }, [productId]);
-
-  const loadProductDetails = async () => {
+  const loadProductDetails = useCallback(async () => {
     try {
       setLoading(true);
       const productData = await productService.getById(productId);
@@ -33,14 +36,52 @@ const ProductDetailScreen = ({ route, navigation }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [productId]);
+
+  // Load product details when screen mounts
+  useEffect(() => {
+    loadProductDetails();
+  }, [loadProductDetails]);
+
+  // Reload product details when screen comes into focus (e.g., after adding a review)
+  useFocusEffect(
+    useCallback(() => {
+      loadProductDetails();
+    }, [loadProductDetails])
+  );
 
   const handleAddReview = () => {
     navigation.navigate('AddReview', { 
-      productId: productId,
-      onReviewAdded: loadProductDetails 
+      productId: productId
     });
   };
+
+  const renderImage = ({ item, index }) => (
+    <Image
+      source={{ uri: item }}
+      style={styles.productImage}
+      resizeMode="cover"
+    />
+  );
+
+  const renderImageThumbnail = ({ item, index }) => (
+    <TouchableOpacity
+      style={[
+        styles.thumbnail,
+        selectedImageIndex === index && styles.thumbnailActive
+      ]}
+      onPress={() => {
+        setSelectedImageIndex(index);
+        imageListRef.current?.scrollToIndex({ index, animated: true });
+      }}
+    >
+      <Image
+        source={{ uri: item }}
+        style={styles.thumbnailImage}
+        resizeMode="cover"
+      />
+    </TouchableOpacity>
+  );
 
   const renderReview = ({ item }) => (
     <View style={styles.reviewCard}>
@@ -76,8 +117,60 @@ const ProductDetailScreen = ({ route, navigation }) => {
     );
   }
 
+  const images = product.imageUrls && product.imageUrls.length > 0 
+    ? product.imageUrls 
+    : [];
+
   return (
     <ScrollView style={styles.container}>
+      {/* Image Gallery */}
+      {images.length > 0 && (
+        <View style={styles.imageGallery}>
+          <View style={styles.mainImageWrapper}>
+            <FlatList
+              ref={imageListRef}
+              data={images}
+              renderItem={renderImage}
+              keyExtractor={(item, index) => index.toString()}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(event) => {
+                const index = Math.round(
+                  event.nativeEvent.contentOffset.x / SCREEN_WIDTH
+                );
+                setSelectedImageIndex(index);
+              }}
+              onScrollToIndexFailed={(info) => {
+                // Handle scroll to index failure
+                const wait = new Promise(resolve => setTimeout(resolve, 500));
+                wait.then(() => {
+                  imageListRef.current?.scrollToIndex({ index: info.index, animated: false });
+                });
+              }}
+              style={styles.mainImageContainer}
+            />
+            {images.length > 1 && (
+              <View style={styles.imageIndicator}>
+                <Text style={styles.imageIndicatorText}>
+                  {selectedImageIndex + 1} / {images.length}
+                </Text>
+              </View>
+            )}
+          </View>
+          {images.length > 1 && (
+            <FlatList
+              data={images}
+              renderItem={renderImageThumbnail}
+              keyExtractor={(item, index) => `thumb-${index}`}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.thumbnailContainer}
+            />
+          )}
+        </View>
+      )}
+
       <View style={styles.productSection}>
         <Text style={styles.productName}>{product.name}</Text>
         <Text style={styles.productCategory}>{product.category}</Text>
@@ -274,6 +367,57 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+  },
+  // Image Gallery Styles
+  imageGallery: {
+    backgroundColor: '#fff',
+    marginBottom: 12,
+  },
+  mainImageWrapper: {
+    position: 'relative',
+    height: 300,
+  },
+  mainImageContainer: {
+    height: 300,
+  },
+  productImage: {
+    width: SCREEN_WIDTH,
+    height: 300,
+    backgroundColor: '#e0e0e0',
+  },
+  imageIndicator: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  imageIndicatorText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  thumbnailContainer: {
+    padding: 12,
+    gap: 8,
+  },
+  thumbnail: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    overflow: 'hidden',
+    marginRight: 8,
+  },
+  thumbnailActive: {
+    borderColor: '#6200ee',
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
   },
 });
 

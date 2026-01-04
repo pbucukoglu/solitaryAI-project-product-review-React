@@ -16,6 +16,7 @@ public class ProductDetailDTO {
     private String description;
     private String category;
     private BigDecimal price;
+    private List<String> imageUrls;
     private Double averageRating;
     private Long reviewCount;
     private List<ReviewDTO> reviews;
