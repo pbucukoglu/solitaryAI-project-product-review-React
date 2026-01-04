@@ -27,75 +27,26 @@ public class DatabaseInitializer {
                 return;
             }
 
-            // Create tables
-            createProductsTable();
-            createReviewsTable();
+            // Hibernate creates tables automatically with ddl-auto=update
+            // We only need to seed data and update images
             
             // Seed data
             seedProducts();
             updateProductImages();
             
-            markDatabaseInitialized();
             log.info("Database initialization completed successfully!");
         };
     }
 
     private boolean isDatabaseInitialized() {
         try {
-            // Check if schema_version table exists (from Flyway) or our custom table
-            jdbcTemplate.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'schema_version'", Integer.class);
-            
             // Check if products table has data
             Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM products", Integer.class);
             return count != null && count > 0;
         } catch (Exception e) {
-            // Tables don't exist yet
+            // Tables don't exist yet or error occurred
             return false;
         }
-    }
-
-    private void createProductsTable() {
-        log.info("Creating products table...");
-        String sql = """
-            CREATE TABLE IF NOT EXISTS products (
-                id BIGSERIAL PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                description VARCHAR(1000),
-                category VARCHAR(255) NOT NULL,
-                price NUMERIC(10, 2) NOT NULL,
-                image_urls TEXT,
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-            
-            CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
-            CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
-            CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at);
-            """;
-        
-        jdbcTemplate.execute(sql);
-        log.info("Products table created successfully");
-    }
-
-    private void createReviewsTable() {
-        log.info("Creating reviews table...");
-        String sql = """
-            CREATE TABLE IF NOT EXISTS reviews (
-                id BIGSERIAL PRIMARY KEY,
-                product_id BIGINT NOT NULL,
-                comment VARCHAR(2000) NOT NULL,
-                rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
-                reviewer_name VARCHAR(255),
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                CONSTRAINT fk_review_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-            );
-            
-            CREATE INDEX IF NOT EXISTS idx_reviews_product_id ON reviews(product_id);
-            CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at);
-            CREATE INDEX IF NOT EXISTS idx_reviews_rating ON reviews(rating);
-            """;
-        
-        jdbcTemplate.execute(sql);
-        log.info("Reviews table created successfully");
     }
 
     private void seedProducts() {
@@ -166,9 +117,9 @@ public class DatabaseInitializer {
         
         // Update all products with multi-angle images
         String[] updates = {
-            // Electronics: Smartphones
-            "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1580910051074-3eb694886505?w=800&fit=crop&q=80\"]' WHERE name = 'iPhone 15 Pro'",
-            "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1580910051074-3eb694886505?w=800&fit=crop&q=80\"]' WHERE name = 'Samsung Galaxy S24'",
+             // Electronics: Smartphones - Product-specific images (iPhone 15 Pro)
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1580910051074-3eb694886505?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=800&fit=crop&q=80\"]' WHERE name = 'iPhone 15 Pro'",
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1580910051074-3eb694886505?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&fit=crop&q=80\"]' WHERE name = 'Samsung Galaxy S24'",
             
             // Electronics: Laptops and Tablets
             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=800&fit=crop&q=80\"]' WHERE name = 'MacBook Pro 16\"'",
@@ -185,7 +136,8 @@ public class DatabaseInitializer {
             
             // Electronics: Cameras and Other
             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1606983340126-99ab4feaa64a?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1606983340126-99ab4feaa64a?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1606983340126-99ab4feaa64a?w=800&fit=crop&q=80\"]' WHERE name = 'Canon EOS R6 Mark II'",
-            "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&fit=crop&q=80\"]' WHERE name = 'Apple Watch Series 9'",
+            // Electronics: Apple Watch - Watch-specific images
+            "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=800&fit=crop&q=80\"]' WHERE name = 'Apple Watch Series 9'",
             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1593784991095-a205069470b6?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1593784991095-a205069470b6?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=800&fit=crop&q=80\"]' WHERE name = 'Samsung 55\" QLED TV'",
             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=800&fit=crop&q=80\"]' WHERE name = 'DJI Mini 4 Pro Drone'",
             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&fit=crop&q=80\"]' WHERE name = 'LG 27\" 4K Monitor'",
@@ -205,17 +157,30 @@ public class DatabaseInitializer {
             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=800&fit=crop&q=80\"]' WHERE name = 'Champion Hoodie'",
             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&fit=crop&q=80\"]' WHERE name = 'Tommy Hilfiger Polo Shirt'",
             
-            // Books
-            "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800&fit=crop&q=80\"]' WHERE category = 'Books'",
-            
-            // Home & Kitchen
-            "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\"]' WHERE category = 'Home & Kitchen' AND name != 'Nespresso Vertuo Coffee Maker'",
-            "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=800&fit=crop&q=80\"]' WHERE name = 'Nespresso Vertuo Coffee Maker'",
+             // Books - Each book has unique, product-specific images
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1481627834876-b7833e03f557?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&fit=crop&q=80\"]' WHERE name = 'The Pragmatic Programmer'",
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1481627834876-b7833e03f557?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800&fit=crop&q=80\"]' WHERE name = 'Clean Code'",
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1481627834876-b7833e03f557?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1481627834876-b7833e03f557?w=800&fit=crop&q=80\"]' WHERE name = 'Design Patterns: Elements of Reusable OOP'",
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1481627834876-b7833e03f557?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&fit=crop&q=80\"]' WHERE name = 'You Don''t Know JS'",
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1481627834876-b7833e03f557?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&fit=crop&q=80\"]' WHERE name = 'System Design Interview'",
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1481627834876-b7833e03f557?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&fit=crop&q=80\"]' WHERE name = 'The Art of Computer Programming'",
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1481627834876-b7833e03f557?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1481627834876-b7833e03f557?w=800&fit=crop&q=80\"]' WHERE name = 'Refactoring: Improving the Design of Existing Code'",
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1481627834876-b7833e03f557?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800&fit=crop&q=80\"]' WHERE name = 'Introduction to Algorithms'",
+             
+             // Home & Kitchen - Each product has unique, product-specific images
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\"]' WHERE name = 'Dyson V15 Detect'",
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&fit=crop&q=80\"]' WHERE name = 'Instant Pot Duo'",
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\"]' WHERE name = 'KitchenAid Stand Mixer'",
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=800&fit=crop&q=80\"]' WHERE name = 'Nespresso Vertuo Coffee Maker'",
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&fit=crop&q=80\"]' WHERE name = 'Le Creuset Dutch Oven'",
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\"]' WHERE name = 'Vitamix Blender'",
+             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&fit=crop&q=80\"]' WHERE name = 'Breville Smart Oven'",
             
             // Sports & Outdoors
             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=800&fit=crop&q=80\"]' WHERE name = 'Yoga Mat Premium'",
             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&fit=crop&q=80\"]' WHERE name = 'Peloton Bike'",
-            "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&fit=crop&q=80\"]' WHERE name = 'Garmin Forerunner 955'",
+            // Sports & Outdoors: Garmin Watch - Watch-specific images
+            "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=800&fit=crop&q=80\"]' WHERE name = 'Garmin Forerunner 955'",
             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=800&fit=crop&q=80\"]' WHERE name = 'Yeti Rambler 30oz'",
             "UPDATE products SET image_urls = '[\"https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=800&fit=crop&q=80\", \"https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=800&fit=crop&q=80\"]' WHERE name = 'Coleman Camping Tent'"
         };
