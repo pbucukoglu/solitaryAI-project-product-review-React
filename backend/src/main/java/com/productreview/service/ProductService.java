@@ -69,9 +69,10 @@ public class ProductService {
     }
     
     private ProductDTO convertToDTO(Product product) {
-        Double avgRating = reviewRepository.findAverageRatingByProductId(product.getId());
-        Long reviewCount = reviewRepository.countByProductId(product.getId());
         List<String> imageUrls = parseImageUrls(product.getImageUrls());
+
+        Double avgRating = product.getAverageRating();
+        Long reviewCount = product.getReviewCount();
         
         return new ProductDTO(
                 product.getId(),
@@ -87,9 +88,10 @@ public class ProductService {
     
     private ProductDetailDTO convertToDetailDTO(Product product) {
         List<Review> reviews = reviewRepository.findByProductId(product.getId());
-        Double avgRating = reviewRepository.findAverageRatingByProductId(product.getId());
-        Long reviewCount = reviewRepository.countByProductId(product.getId());
         List<String> imageUrls = parseImageUrls(product.getImageUrls());
+
+        Double avgRating = product.getAverageRating();
+        Long reviewCount = product.getReviewCount();
         
         List<com.productreview.dto.ReviewDTO> reviewDTOs = reviews.stream()
                 .map(review -> new com.productreview.dto.ReviewDTO(

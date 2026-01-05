@@ -33,14 +33,15 @@ public class ReviewController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDir
+            @RequestParam(defaultValue = "DESC") String sortDir,
+            @RequestParam(required = false) Integer minRating
     ) {
         Sort sort = sortDir.equalsIgnoreCase("ASC") 
                 ? Sort.by(sortBy).ascending() 
                 : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(page, size, sort);
         
-        Page<ReviewDTO> reviews = reviewService.getReviewsByProductId(productId, pageable);
+        Page<ReviewDTO> reviews = reviewService.getReviewsByProductId(productId, pageable, minRating);
         return ResponseEntity.ok(reviews);
     }
 }

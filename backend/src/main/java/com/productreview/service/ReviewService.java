@@ -33,12 +33,18 @@ public class ReviewService {
                 : "Anonymous");
         
         Review savedReview = reviewRepository.save(review);
+
+        Double avgRating = reviewRepository.findAverageRatingByProductId(product.getId());
+        Long reviewCount = reviewRepository.countByProductId(product.getId());
+        product.setAverageRating(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : 0.0);
+        product.setReviewCount(reviewCount != null ? reviewCount : 0L);
+        productRepository.save(product);
         
         return convertToDTO(savedReview);
     }
     
-    public Page<ReviewDTO> getReviewsByProductId(Long productId, Pageable pageable) {
-        return reviewRepository.findByProductId(productId, pageable)
+    public Page<ReviewDTO> getReviewsByProductId(Long productId, Pageable pageable, Integer minRating) {
+        return reviewRepository.findByProductIdFiltered(productId, minRating, pageable)
                 .map(this::convertToDTO);
     }
     

@@ -1,8 +1,11 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useColorScheme } from 'react-native';
+
+import { createTheme } from './components/theme';
 
 import ProductListScreen from './screens/ProductListScreen';
 import ProductDetailScreen from './screens/ProductDetailScreen';
@@ -11,10 +14,36 @@ import AddReviewScreen from './screens/AddReviewScreen';
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+  const colorScheme = useColorScheme();
+  const appTheme = createTheme(colorScheme);
+  const navTheme = colorScheme === 'dark'
+    ? {
+        ...DarkTheme,
+        colors: {
+          ...DarkTheme.colors,
+          background: appTheme.colors.background,
+          card: appTheme.colors.surface,
+          text: appTheme.colors.text,
+          border: appTheme.colors.border,
+          primary: appTheme.colors.primary,
+        },
+      }
+    : {
+        ...DefaultTheme,
+        colors: {
+          ...DefaultTheme.colors,
+          background: appTheme.colors.background,
+          card: appTheme.colors.surface,
+          text: appTheme.colors.text,
+          border: appTheme.colors.border,
+          primary: appTheme.colors.primary,
+        },
+      };
+
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
-        <StatusBar style="dark" />
+      <NavigationContainer theme={navTheme}>
+        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
         <Stack.Navigator
           initialRouteName="ProductList"
           screenOptions={{

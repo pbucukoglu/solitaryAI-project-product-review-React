@@ -14,6 +14,13 @@ import java.util.List;
 public interface ReviewRepository extends JpaRepository<Review, Long> {
     
     Page<Review> findByProductId(Long productId, Pageable pageable);
+
+    @Query("SELECT r FROM Review r WHERE r.product.id = :productId AND (:minRating IS NULL OR r.rating >= :minRating)")
+    Page<Review> findByProductIdFiltered(
+            @Param("productId") Long productId,
+            @Param("minRating") Integer minRating,
+            Pageable pageable
+    );
     
     List<Review> findByProductId(Long productId);
     

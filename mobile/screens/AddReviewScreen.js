@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   View,
   Text,
   TextInput,
@@ -10,15 +11,24 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  useColorScheme,
 } from 'react-native';
 import { reviewService } from '../services/api';
 
+import OfflineBanner from '../components/OfflineBanner';
+import { createTheme } from '../components/theme';
+
 const AddReviewScreen = ({ route, navigation }) => {
   const { productId } = route.params;
+  const colorScheme = useColorScheme();
+  const theme = useMemo(() => createTheme(colorScheme), [colorScheme]);
+
   const [comment, setComment] = useState('');
   const [rating, setRating] = useState(5);
   const [reviewerName, setReviewerName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const starScales = useRef([0, 1, 2, 3, 4].map(() => new Animated.Value(1))).current;
 
   const handleSubmit = async () => {
     if (comment.trim().length < 10) {
@@ -44,7 +54,6 @@ const AddReviewScreen = ({ route, navigation }) => {
         {
           text: 'OK',
           onPress: () => {
-            // Navigation will automatically trigger useFocusEffect in ProductDetailScreen
             navigation.goBack();
           },
         },
@@ -63,53 +72,73 @@ const AddReviewScreen = ({ route, navigation }) => {
         {[1, 2, 3, 4, 5].map((star) => (
           <TouchableOpacity
             key={star}
-            onPress={() => setRating(star)}
+            onPress={() => {
+              setRating(star);
+              const idx = star - 1;
+              Animated.sequence([
+                Animated.spring(starScales[idx], {
+                  toValue: 1.18,
+                  useNativeDriver: true,
+                  speed: 22,
+                  bounciness: 10,
+                }),
+                Animated.spring(starScales[idx], {
+                  toValue: 1,
+                  useNativeDriver: true,
+                  speed: 18,
+                  bounciness: 8,
+                }),
+              ]).start();
+            }}
             style={styles.starButton}
           >
-            <Text style={styles.star}>{star <= rating ? '⭐' : '☆'}</Text>
+            <Animated.Text style={[styles.star, { transform: [{ scale: starScales[star - 1] }] }]}>
+              {star <= rating ? '⭐' : '☆'}
+            </Animated.Text>
           </TouchableOpacity>
         ))}
-        <Text style={styles.ratingText}>{rating} / 5</Text>
+        <Text style={[styles.ratingText, { color: theme.colors.text }]}>{rating} / 5</Text>
       </View>
     );
   };
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.form}>
-          <Text style={styles.label}>Your Name (Optional)</Text>
+      <OfflineBanner theme={theme} />
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <View style={[styles.form, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}> 
+          <Text style={[styles.label, { color: theme.colors.text }]}>Your Name (Optional)</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { color: theme.colors.text, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt }]}
             value={reviewerName}
             onChangeText={setReviewerName}
             placeholder="Enter your name"
-            placeholderTextColor="#999"
+            placeholderTextColor={theme.colors.textSecondary}
           />
 
-          <Text style={styles.label}>Rating</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Rating</Text>
           {renderStarRating()}
 
-          <Text style={styles.label}>Review Comment *</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Review Comment *</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.textArea, { color: theme.colors.text, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt }]}
             value={comment}
             onChangeText={setComment}
             placeholder="Write your review (minimum 10 characters)"
-            placeholderTextColor="#999"
+            placeholderTextColor={theme.colors.textSecondary}
             multiline
             numberOfLines={6}
             textAlignVertical="top"
           />
-          <Text style={styles.charCount}>
+          <Text style={[styles.charCount, { color: theme.colors.textSecondary }]}>
             {comment.length} / 2000 characters
           </Text>
 
           <TouchableOpacity
-            style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+            style={[styles.submitButton, { backgroundColor: theme.colors.primary }, submitting && styles.submitButtonDisabled]}
             onPress={handleSubmit}
             disabled={submitting}
           >
@@ -128,31 +157,26 @@ const AddReviewScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   scrollContent: {
     padding: 20,
   },
   form: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
+    borderWidth: 1,
   },
   label: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
     marginBottom: 8,
     marginTop: 16,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: '#333',
-    backgroundColor: '#fff',
   },
   textArea: {
     minHeight: 120,
@@ -160,7 +184,6 @@ const styles = StyleSheet.create({
   },
   charCount: {
     fontSize: 12,
-    color: '#666',
     marginTop: 4,
     textAlign: 'right',
   },
@@ -178,11 +201,9 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
     marginLeft: 16,
   },
   submitButton: {
-    backgroundColor: '#6200ee',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',

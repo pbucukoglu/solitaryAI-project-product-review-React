@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,15 +12,24 @@ import {
   TextInput,
   Modal,
   ScrollView,
+  useColorScheme,
 } from 'react-native';
 import { productService } from '../services/api';
 
+import OfflineBanner from '../components/OfflineBanner';
+import Skeleton, { SkeletonRow } from '../components/Skeleton';
+import { createTheme } from '../components/theme';
+
 const ProductListScreen = ({ navigation }) => {
+  const colorScheme = useColorScheme();
+  const theme = useMemo(() => createTheme(colorScheme), [colorScheme]);
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [sortBy, setSortBy] = useState('id');
@@ -30,6 +39,7 @@ const ProductListScreen = ({ navigation }) => {
 
   const loadProducts = async (pageNum = 0, append = false, overrideFilters = null) => {
     try {
+      setLoadError(null);
       setLoading(pageNum === 0);
       // Use override filters if provided (from timer), otherwise use current state
       const filters = overrideFilters || {
@@ -86,6 +96,7 @@ const ProductListScreen = ({ navigation }) => {
       setPage(pageNum);
     } catch (error) {
       console.error('Error loading products:', error);
+      setLoadError('Failed to load products.');
       Alert.alert('Error', `Failed to load products. ${error.message || 'Please check your connection.'}`);
     } finally {
       setLoading(false);
@@ -193,25 +204,25 @@ const ProductListScreen = ({ navigation }) => {
     
     return (
       <TouchableOpacity
-        style={styles.productCard}
+        style={[styles.productCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
         onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
       >
         {firstImage && (
           <Image 
             source={{ uri: firstImage }} 
-            style={styles.productImage}
+            style={[styles.productImage, { backgroundColor: theme.colors.surfaceAlt }]}
             resizeMode="cover"
           />
         )}
-        <View style={styles.productInfo}>
-          <Text style={styles.productName}>{item.name}</Text>
-          <Text style={styles.productCategory}>{item.category}</Text>
+        <View style={[styles.productInfo, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.productName, { color: theme.colors.text }]}>{item.name}</Text>
+          <Text style={[styles.productCategory, { color: theme.colors.textSecondary }]}>{item.category}</Text>
           <View style={styles.productMeta}>
-            <Text style={styles.productPrice}>${item.price.toFixed(2)}</Text>
+            <Text style={[styles.productPrice, { color: theme.colors.primary }]}>${item.price.toFixed(2)}</Text>
             {item.averageRating > 0 && (
               <View style={styles.ratingContainer}>
-                <Text style={styles.ratingText}>⭐ {item.averageRating.toFixed(1)}</Text>
-                <Text style={styles.reviewCount}>({item.reviewCount})</Text>
+                <Text style={[styles.ratingText, { color: theme.colors.text }]}>⭐ {item.averageRating.toFixed(1)}</Text>
+                <Text style={[styles.reviewCount, { color: theme.colors.textSecondary }]}>({item.reviewCount})</Text>
               </View>
             )}
           </View>
@@ -220,29 +231,39 @@ const ProductListScreen = ({ navigation }) => {
     );
   };
 
-  if (loading && products.length === 0) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#6200ee" />
-        <Text style={styles.loadingText}>Loading products...</Text>
+  const renderSkeletonItem = () => (
+    <View style={[styles.productCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}> 
+      <Skeleton height={92} radius={12} baseColor={theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} highlightColor={theme.isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)'} />
+      <View style={[styles.productInfo, { backgroundColor: theme.colors.surface }]}> 
+        <Skeleton height={14} width={'70%'} radius={10} baseColor={theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} highlightColor={theme.isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)'} />
+        <View style={{ height: 10 }} />
+        <Skeleton height={12} width={'40%'} radius={10} baseColor={theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} highlightColor={theme.isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)'} />
+        <View style={{ height: 12 }} />
+        <SkeletonRow>
+          <Skeleton height={16} width={80} radius={10} baseColor={theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} highlightColor={theme.isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)'} />
+          <View style={{ width: 10 }} />
+          <Skeleton height={16} width={64} radius={10} baseColor={theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} highlightColor={theme.isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)'} />
+        </SkeletonRow>
       </View>
-    );
-  }
+    </View>
+  );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <OfflineBanner theme={theme} />
       {/* Search and Filter Bar */}
-      <View style={styles.searchBar}>
+      <View style={[styles.searchBar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: theme.colors.text, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt }]}
           placeholder="Search products..."
           value={searchQuery}
           onChangeText={setSearchQuery}
           onSubmitEditing={handleSearch}
           returnKeyType="search"
+          placeholderTextColor={theme.colors.textSecondary}
         />
         <TouchableOpacity 
-          style={styles.filterButton}
+          style={[styles.filterButton, { backgroundColor: theme.colors.primary }]}
           onPress={() => setShowFilters(true)}
         >
           <Text style={styles.filterButtonText}>🔍 Filters</Text>
@@ -251,47 +272,66 @@ const ProductListScreen = ({ navigation }) => {
 
       {/* Active Filters */}
       {(selectedCategory || sortBy !== 'id' || sortDir !== 'ASC') && (
-        <View style={styles.activeFilters}>
+        <View style={[styles.activeFilters, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
           {selectedCategory && (
-            <View style={styles.filterChip}>
-              <Text style={styles.filterChipText}>Category: {selectedCategory}</Text>
+            <View style={[styles.filterChip, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}>
+              <Text style={[styles.filterChipText, { color: theme.colors.text }]}>Category: {selectedCategory}</Text>
               <TouchableOpacity onPress={() => setSelectedCategory(null)}>
-                <Text style={styles.filterChipClose}>✕</Text>
+                <Text style={[styles.filterChipClose, { color: theme.colors.text }]}>✕</Text>
               </TouchableOpacity>
             </View>
           )}
-          <View style={styles.filterChip}>
-            <Text style={styles.filterChipText}>
+          <View style={[styles.filterChip, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}
+          >
+            <Text style={[styles.filterChipText, { color: theme.colors.text }]}>
               Sort: {sortBy} ({sortDir})
             </Text>
             <TouchableOpacity onPress={() => { setSortBy('id'); setSortDir('ASC'); }}>
-              <Text style={styles.filterChipClose}>✕</Text>
+              <Text style={[styles.filterChipClose, { color: theme.colors.text }]}>✕</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      <FlatList
+      {loading && products.length === 0 ? (
+        <FlatList
+          data={[0, 1, 2, 3, 4]}
+          renderItem={renderSkeletonItem}
+          keyExtractor={(item) => `s-${item}`}
+          contentContainerStyle={styles.list}
+        />
+      ) : (
+        <FlatList
         data={products}
         renderItem={renderProduct}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />
         }
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No products found</Text>
+            {loadError ? (
+              <>
+                <Text style={[styles.emptyText, { color: theme.colors.danger }]}>{loadError}</Text>
+                <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.colors.primary }]} onPress={() => loadProducts(0, false)}>
+                  <Text style={styles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>No products found</Text>
+            )}
           </View>
         }
         ListFooterComponent={
           hasMore && products.length > 0 ? (
-            <ActivityIndicator style={styles.footerLoader} color="#6200ee" />
+            <ActivityIndicator style={styles.footerLoader} color={theme.colors.primary} />
           ) : null
         }
       />
+      )}
 
       {/* Filter Modal */}
       <Modal
@@ -301,30 +341,32 @@ const ProductListScreen = ({ navigation }) => {
         onRequestClose={() => setShowFilters(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Filters & Sort</Text>
+              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Filters & Sort</Text>
               <TouchableOpacity onPress={() => setShowFilters(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+                <Text style={[styles.modalClose, { color: theme.colors.text }]}>✕</Text>
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.modalBody}>
               {/* Category Filter */}
               <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Category</Text>
+                <Text style={[styles.filterSectionTitle, { color: theme.colors.text }]}>Category</Text>
                 <View style={styles.categoryContainer}>
                   {categories.map((category) => (
                     <TouchableOpacity
                       key={category}
                       style={[
                         styles.categoryChip,
-                        selectedCategory === category && styles.categoryChipActive
+                        { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt },
+                        selectedCategory === category && [styles.categoryChipActive, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]
                       ]}
                       onPress={() => handleCategoryFilter(category)}
                     >
                       <Text style={[
                         styles.categoryChipText,
+                        { color: theme.colors.text },
                         selectedCategory === category && styles.categoryChipTextActive
                       ]}>
                         {category}
@@ -336,18 +378,20 @@ const ProductListScreen = ({ navigation }) => {
 
               {/* Sort Options */}
               <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Sort By</Text>
+                <Text style={[styles.filterSectionTitle, { color: theme.colors.text }]}>Sort By</Text>
                 {['id', 'name', 'price', 'createdAt'].map((field) => (
                   <TouchableOpacity
                     key={field}
                     style={[
                       styles.sortOption,
-                      sortBy === field && styles.sortOptionActive
+                      { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt },
+                      sortBy === field && [styles.sortOptionActive, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]
                     ]}
                     onPress={() => handleSort(field)}
                   >
                     <Text style={[
                       styles.sortOptionText,
+                      { color: theme.colors.text },
                       sortBy === field && styles.sortOptionTextActive
                     ]}>
                       {field === 'id' ? 'Default' : field.charAt(0).toUpperCase() + field.slice(1)}
@@ -360,7 +404,7 @@ const ProductListScreen = ({ navigation }) => {
 
             <View style={styles.modalFooter}>
               <TouchableOpacity
-                style={styles.applyButton}
+                style={[styles.applyButton, { backgroundColor: theme.colors.primary }]}
                 onPress={() => {
                   setShowFilters(false);
                   loadProducts(0, false);
@@ -389,30 +433,29 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    fontSize: 16,
-    color: '#666',
   },
   searchBar: {
     flexDirection: 'row',
-    padding: 12,
-    backgroundColor: '#fff',
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#eee',
   },
   searchInput: {
     flex: 1,
-    height: 40,
-    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    marginRight: 8,
+    padding: 12,
+    fontSize: 16,
+    borderColor: '#ddd',
+    backgroundColor: '#f5f5f5',
+    color: '#333',
   },
   filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#6200ee',
+    padding: 12,
     borderRadius: 8,
+    marginLeft: 12,
     justifyContent: 'center',
+    backgroundColor: '#6200ee',
   },
   filterButtonText: {
     color: '#fff',
@@ -424,26 +467,28 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#eee',
   },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e3f2fd',
+    backgroundColor: '#f5f5f5',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     marginRight: 8,
     marginBottom: 4,
+    borderWidth: 1,
+    borderColor: '#e6e6e6',
   },
   filterChipText: {
     fontSize: 12,
-    color: '#1976d2',
+    color: '#333',
     marginRight: 6,
   },
   filterChipClose: {
     fontSize: 14,
-    color: '#1976d2',
+    color: '#333',
     fontWeight: 'bold',
   },
   list: {
@@ -451,14 +496,16 @@ const styles = StyleSheet.create({
   },
   productCard: {
     backgroundColor: '#fff',
+    marginBottom: 16,
     borderRadius: 12,
-    marginBottom: 12,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#eee',
   },
   productImage: {
     width: '100%',
@@ -511,7 +558,20 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
+    textAlign: 'center',
     color: '#666',
+  },
+  retryButton: {
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: '#6200ee',
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   footerLoader: {
     padding: 20,
@@ -524,15 +584,16 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 12,
+    padding: 20,
     maxHeight: '80%',
+    borderWidth: 1,
+    borderColor: '#e6e6e6',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
@@ -568,6 +629,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     marginRight: 8,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e6e6e6',
   },
   categoryChipActive: {
     backgroundColor: '#6200ee',

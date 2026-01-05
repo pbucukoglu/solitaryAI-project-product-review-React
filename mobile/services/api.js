@@ -44,9 +44,13 @@ export const reviewService = {
     return response.data;
   },
   
-  getByProductId: async (productId, page = 0, size = 20) => {
+  getByProductId: async (productId, page = 0, size = 20, sortBy = 'createdAt', sortDir = 'DESC', minRating = null) => {
+    const params = { page, size, sortBy, sortDir };
+    if (minRating !== null && minRating !== undefined) {
+      params.minRating = minRating;
+    }
     const response = await api.get(`${API_ENDPOINTS.REVIEWS}/product/${productId}`, {
-      params: { page, size },
+      params,
     });
     return response.data;
   },
