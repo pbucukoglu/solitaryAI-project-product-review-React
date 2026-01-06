@@ -8,6 +8,7 @@ import com.productreview.entity.Product;
 import com.productreview.entity.Review;
 import com.productreview.repository.ProductRepository;
 import com.productreview.repository.ReviewRepository;
+import com.productreview.spec.ProductSpecifications;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Page;
@@ -36,15 +37,13 @@ public class ProductService {
         boolean hasCategory = category != null && !category.isEmpty();
         boolean hasSearch = search != null && !search.isEmpty();
         
-        if (hasCategory && hasSearch) {
-            // Both category and search: use combined query
-            products = productRepository.findByCategoryAndSearch(category, search, pageable);
+        if (hasSearch) {
+            products = productRepository.findAll(
+                    ProductSpecifications.categoryAndMultiTermSearch(hasCategory ? category : null, search),
+                    pageable
+            );
         } else if (hasCategory) {
-            // Only category filter
             products = productRepository.findByCategory(category, pageable);
-        } else if (hasSearch) {
-            // Only search
-            products = productRepository.searchProducts(search, pageable);
         } else {
             // No filters: get all
             products = productRepository.findAll(pageable);
