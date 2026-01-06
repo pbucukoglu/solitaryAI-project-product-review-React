@@ -43,6 +43,18 @@ export const reviewService = {
     const response = await api.post(API_ENDPOINTS.REVIEWS, reviewData);
     return response.data;
   },
+
+  update: async (reviewId, reviewData) => {
+    const response = await api.put(`${API_ENDPOINTS.REVIEWS}/${reviewId}`, reviewData);
+    return response.data;
+  },
+
+  delete: async (reviewId, deviceId) => {
+    const response = await api.delete(`${API_ENDPOINTS.REVIEWS}/${reviewId}`, {
+      params: { deviceId },
+    });
+    return response.data;
+  },
   
   getByProductId: async (productId, page = 0, size = 20, sortBy = 'createdAt', sortDir = 'DESC', minRating = null) => {
     const params = { page, size, sortBy, sortDir };

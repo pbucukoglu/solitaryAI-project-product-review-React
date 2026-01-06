@@ -37,6 +37,9 @@ public class Review {
     
     @Column(name = "reviewer_name")
     private String reviewerName;
+
+    @Column(name = "device_id", length = 128)
+    private String deviceId;
     
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

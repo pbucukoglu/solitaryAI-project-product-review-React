@@ -2,6 +2,7 @@ package com.productreview.controller;
 
 import com.productreview.dto.CreateReviewDTO;
 import com.productreview.dto.ReviewDTO;
+import com.productreview.dto.UpdateReviewDTO;
 import com.productreview.service.ReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,48 @@ public class ReviewController {
     public ResponseEntity<ReviewDTO> createReview(@Valid @RequestBody CreateReviewDTO createReviewDTO) {
         ReviewDTO review = reviewService.createReview(createReviewDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(review);
+    }
+
+    @PutMapping("/{reviewId}")
+    public ResponseEntity<?> updateReview(
+            @PathVariable Long reviewId,
+            @Valid @RequestBody UpdateReviewDTO updateReviewDTO
+    ) {
+        try {
+            ReviewDTO updated = reviewService.updateReview(reviewId, updateReviewDTO);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalStateException e) {
+            if ("FORBIDDEN".equals(e.getMessage())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You can only edit your own review.");
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid request");
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().startsWith("Review not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+            }
+            throw e;
+        }
+    }
+
+    @DeleteMapping("/{reviewId}")
+    public ResponseEntity<?> deleteReview(
+            @PathVariable Long reviewId,
+            @RequestParam String deviceId
+    ) {
+        try {
+            reviewService.deleteReview(reviewId, deviceId);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalStateException e) {
+            if ("FORBIDDEN".equals(e.getMessage())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You can only delete your own review.");
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid request");
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().startsWith("Review not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+            }
+            throw e;
+        }
     }
     
     @GetMapping("/product/{productId}")

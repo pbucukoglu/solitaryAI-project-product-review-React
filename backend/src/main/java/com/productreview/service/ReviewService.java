@@ -2,6 +2,7 @@ package com.productreview.service;
 
 import com.productreview.dto.CreateReviewDTO;
 import com.productreview.dto.ReviewDTO;
+import com.productreview.dto.UpdateReviewDTO;
 import com.productreview.entity.Product;
 import com.productreview.entity.Review;
 import com.productreview.repository.ProductRepository;
@@ -31,6 +32,7 @@ public class ReviewService {
         review.setReviewerName(createReviewDTO.getReviewerName() != null && !createReviewDTO.getReviewerName().isEmpty() 
                 ? createReviewDTO.getReviewerName() 
                 : "Anonymous");
+        review.setDeviceId(createReviewDTO.getDeviceId());
         
         Review savedReview = reviewRepository.save(review);
 
@@ -41,6 +43,38 @@ public class ReviewService {
         productRepository.save(product);
         
         return convertToDTO(savedReview);
+    }
+
+    public ReviewDTO updateReview(Long reviewId, UpdateReviewDTO updateReviewDTO) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new RuntimeException("Review not found with id: " + reviewId));
+
+        if (review.getDeviceId() == null || !review.getDeviceId().equals(updateReviewDTO.getDeviceId())) {
+            throw new IllegalStateException("FORBIDDEN");
+        }
+
+        review.setComment(updateReviewDTO.getComment());
+        review.setRating(updateReviewDTO.getRating());
+        review.setReviewerName(updateReviewDTO.getReviewerName() != null && !updateReviewDTO.getReviewerName().isEmpty()
+                ? updateReviewDTO.getReviewerName()
+                : "Anonymous");
+
+        Review saved = reviewRepository.save(review);
+        recalculateAggregates(review.getProduct().getId());
+        return convertToDTO(saved);
+    }
+
+    public void deleteReview(Long reviewId, String deviceId) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new RuntimeException("Review not found with id: " + reviewId));
+
+        if (review.getDeviceId() == null || !review.getDeviceId().equals(deviceId)) {
+            throw new IllegalStateException("FORBIDDEN");
+        }
+
+        Long productId = review.getProduct().getId();
+        reviewRepository.delete(review);
+        recalculateAggregates(productId);
     }
     
     public Page<ReviewDTO> getReviewsByProductId(Long productId, Pageable pageable, Integer minRating) {
@@ -55,8 +89,21 @@ public class ReviewService {
                 review.getComment(),
                 review.getRating(),
                 review.getReviewerName(),
+                review.getDeviceId(),
                 review.getCreatedAt()
         );
+    }
+
+    private void recalculateAggregates(Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
+
+        Double avgRating = reviewRepository.findAverageRatingByProductId(productId);
+        Long reviewCount = reviewRepository.countByProductId(productId);
+
+        product.setAverageRating(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : 0.0);
+        product.setReviewCount(reviewCount != null ? reviewCount : 0L);
+        productRepository.save(product);
     }
 }
 

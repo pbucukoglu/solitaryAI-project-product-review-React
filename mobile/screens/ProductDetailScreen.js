@@ -3,6 +3,7 @@ import {
   Animated,
   View,
   Text,
+  TextInput,
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
@@ -20,6 +21,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { productService, reviewService } from '../services/api';
 import { wishlistService } from '../services/wishlist';
+import { deviceService } from '../services/device';
 
 import OfflineBanner from '../components/OfflineBanner';
 import Skeleton, { SkeletonRow } from '../components/Skeleton';
@@ -51,6 +53,14 @@ const ProductDetailScreen = ({ route, navigation }) => {
   const previewListRef = useRef(null);
 
   const [isFavorite, setIsFavorite] = useState(false);
+  const [deviceId, setDeviceId] = useState(null);
+
+  const [editVisible, setEditVisible] = useState(false);
+  const [editingReviewId, setEditingReviewId] = useState(null);
+  const [editReviewerName, setEditReviewerName] = useState('');
+  const [editRating, setEditRating] = useState(5);
+  const [editComment, setEditComment] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
 
   const scrollY = useRef(new Animated.Value(0)).current;
   const ratingPulse = useRef(new Animated.Value(1)).current;
@@ -108,6 +118,15 @@ const ProductDetailScreen = ({ route, navigation }) => {
     }
   }, [loadProductDetails, loadReviews]);
 
+  const loadDeviceId = React.useCallback(async () => {
+    try {
+      const id = await deviceService.getDeviceId();
+      setDeviceId(id);
+    } catch (e) {
+      console.error('Error loading deviceId:', e);
+    }
+  }, []);
+
   const loadFavoriteState = React.useCallback(async () => {
     try {
       const fav = await wishlistService.isFavorite(productId);
@@ -136,12 +155,92 @@ const ProductDetailScreen = ({ route, navigation }) => {
     React.useCallback(() => {
       refreshAll();
       loadFavoriteState();
-    }, [refreshAll, loadFavoriteState])
+      loadDeviceId();
+    }, [refreshAll, loadFavoriteState, loadDeviceId])
   );
 
   useEffect(() => {
     loadFavoriteState();
   }, [loadFavoriteState]);
+
+  useEffect(() => {
+    loadDeviceId();
+  }, [loadDeviceId]);
+
+  const openEdit = (review) => {
+    setEditingReviewId(review.id);
+    setEditReviewerName(review.reviewerName || '');
+    setEditRating(Number(review.rating) || 5);
+    setEditComment(review.comment || '');
+    setEditVisible(true);
+  };
+
+  const closeEdit = () => {
+    setEditVisible(false);
+    setEditingReviewId(null);
+  };
+
+  const submitEdit = async () => {
+    if (!editingReviewId) return;
+    if (!deviceId) {
+      Alert.alert('Error', 'Device ID is not ready yet. Please try again.');
+      return;
+    }
+    if (editComment.trim().length < 10) {
+      Alert.alert('Validation Error', 'Comment must be at least 10 characters long.');
+      return;
+    }
+
+    try {
+      setEditSubmitting(true);
+      await reviewService.update(editingReviewId, {
+        comment: editComment.trim(),
+        rating: editRating,
+        reviewerName: editReviewerName.trim() || undefined,
+        deviceId,
+      });
+      closeEdit();
+      await refreshAll();
+    } catch (e) {
+      console.error('Error updating review:', e);
+      const status = e?.response?.status;
+      if (status === 403) {
+        Alert.alert('Not allowed', 'You can only edit your own review.');
+      } else {
+        Alert.alert('Error', 'Failed to update review.');
+      }
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const confirmDelete = (reviewId) => {
+    if (!deviceId) {
+      Alert.alert('Error', 'Device ID is not ready yet. Please try again.');
+      return;
+    }
+    Alert.alert('Delete review?', 'This action cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await reviewService.delete(reviewId, deviceId);
+            await refreshAll();
+          } catch (e) {
+            console.error('Error deleting review:', e);
+            const status = e?.response?.status;
+            if (status === 403) {
+              Alert.alert('Not allowed', 'You can only delete your own review.');
+            } else {
+              Alert.alert('Error', 'Failed to delete review.');
+            }
+          }
+        },
+      },
+    ]);
+  };
 
   useEffect(() => {
     if (!product) return;
@@ -211,7 +310,9 @@ const ProductDetailScreen = ({ route, navigation }) => {
     </TouchableOpacity>
   );
 
-  const renderReview = ({ item }) => (
+  const renderReview = ({ item }) => {
+    const isOwn = deviceId && item?.deviceId && item.deviceId === deviceId;
+    return (
     <View
       style={[
         styles.reviewCard,
@@ -241,9 +342,26 @@ const ProductDetailScreen = ({ route, navigation }) => {
           <Text style={styles.ratingBadgeText}>⭐ {item.rating}/5</Text>
         </View>
       </View>
+      {isOwn && (
+        <View style={styles.reviewActionsRow}>
+          <TouchableOpacity
+            style={[styles.reviewActionButton, { backgroundColor: theme.colors.surface }]}
+            onPress={() => openEdit(item)}
+          >
+            <Text style={[styles.reviewActionText, { color: theme.colors.text }]}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.reviewActionButton, { backgroundColor: theme.colors.surface, marginLeft: 10 }]}
+            onPress={() => confirmDelete(item.id)}
+          >
+            <Text style={[styles.reviewActionText, { color: theme.colors.danger }]}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       <Text style={[styles.reviewComment, { color: theme.colors.textSecondary }]}>{item.comment}</Text>
     </View>
-  );
+    );
+  };
 
   const images = product?.imageUrls && product.imageUrls.length > 0 
     ? product.imageUrls 
@@ -567,6 +685,62 @@ const ProductDetailScreen = ({ route, navigation }) => {
         </View>
       </Animated.ScrollView>
 
+      <Modal visible={editVisible} animationType="slide" transparent onRequestClose={closeEdit}>
+        <View style={styles.editOverlay}>
+          <View style={[styles.editCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}> 
+            <View style={styles.editHeader}>
+              <Text style={[styles.editTitle, { color: theme.colors.text }]}>Edit your review</Text>
+              <TouchableOpacity onPress={closeEdit}>
+                <Text style={[styles.editClose, { color: theme.colors.text }]}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.editLabel, { color: theme.colors.text }]}>Your Name (Optional)</Text>
+            <TextInput
+              style={[styles.editInput, { color: theme.colors.text, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt }]}
+              value={editReviewerName}
+              onChangeText={setEditReviewerName}
+              placeholder="Enter your name"
+              placeholderTextColor={theme.colors.textSecondary}
+            />
+
+            <Text style={[styles.editLabel, { color: theme.colors.text }]}>Rating</Text>
+            <View style={styles.editStarsRow}>
+              {[1, 2, 3, 4, 5].map((s) => (
+                <TouchableOpacity key={s} onPress={() => setEditRating(s)} style={styles.editStarButton}>
+                  <Text style={[styles.editStar, { color: theme.colors.text }]}>{s <= editRating ? '⭐' : '☆'}</Text>
+                </TouchableOpacity>
+              ))}
+              <Text style={[styles.editRatingText, { color: theme.colors.text }]}>{editRating} / 5</Text>
+            </View>
+
+            <Text style={[styles.editLabel, { color: theme.colors.text }]}>Review Comment *</Text>
+            <TextInput
+              style={[styles.editInput, styles.editTextArea, { color: theme.colors.text, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt }]}
+              value={editComment}
+              onChangeText={setEditComment}
+              placeholder="Write your review (minimum 10 characters)"
+              placeholderTextColor={theme.colors.textSecondary}
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+            />
+
+            <TouchableOpacity
+              style={[styles.editSubmit, { backgroundColor: theme.colors.primary }, editSubmitting && styles.editSubmitDisabled]}
+              onPress={submitEdit}
+              disabled={editSubmitting}
+            >
+              {editSubmitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.editSubmitText}>Save changes</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <Animated.View style={[styles.fabContainer, { transform: [{ scale: fabScale }] }]}>
         <TouchableOpacity
           activeOpacity={0.9}
@@ -733,6 +907,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  reviewActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  reviewActionButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  reviewActionText: {
+    fontSize: 13,
+    fontWeight: '800',
   },
   reviewIdentity: {
     flexDirection: 'row',
@@ -1021,6 +1210,76 @@ const styles = StyleSheet.create({
   previewImage: {
     width: SCREEN_WIDTH,
     height: '78%',
+  },
+  editOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  editCard: {
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+  },
+  editHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  editTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  editClose: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  editLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  editInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 15,
+  },
+  editTextArea: {
+    minHeight: 120,
+  },
+  editStarsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  editStarButton: {
+    paddingVertical: 8,
+    paddingRight: 2,
+  },
+  editStar: {
+    fontSize: 26,
+  },
+  editRatingText: {
+    marginLeft: 10,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  editSubmit: {
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  editSubmitDisabled: {
+    backgroundColor: '#999',
+  },
+  editSubmitText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '900',
   },
 });
 

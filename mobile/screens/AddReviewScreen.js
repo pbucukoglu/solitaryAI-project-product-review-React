@@ -14,6 +14,7 @@ import {
   useColorScheme,
 } from 'react-native';
 import { reviewService } from '../services/api';
+import { deviceService } from '../services/device';
 
 import OfflineBanner from '../components/OfflineBanner';
 import { createTheme } from '../components/theme';
@@ -43,11 +44,13 @@ const AddReviewScreen = ({ route, navigation }) => {
 
     try {
       setSubmitting(true);
+      const deviceId = await deviceService.getDeviceId();
       await reviewService.create({
         productId,
         comment: comment.trim(),
         rating,
         reviewerName: reviewerName.trim() || undefined,
+        deviceId,
       });
 
       Alert.alert('Success', 'Review submitted successfully!', [

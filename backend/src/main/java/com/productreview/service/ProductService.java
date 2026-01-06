@@ -120,6 +120,7 @@ public class ProductService {
                         review.getComment(),
                         review.getRating(),
                         review.getReviewerName(),
+                        review.getDeviceId(),
                         review.getCreatedAt()
                 ))
                 .collect(Collectors.toList());
