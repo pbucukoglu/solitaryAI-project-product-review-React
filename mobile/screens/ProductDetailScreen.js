@@ -377,9 +377,11 @@ const ProductDetailScreen = ({ route, navigation }) => {
     ? product.imageUrls 
     : [];
 
+  const headerMaxHeight = images.length > 1 ? 392 : HEADER_MAX_HEIGHT;
+
   const headerHeight = scrollY.interpolate({
-    inputRange: [0, HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT],
-    outputRange: [HEADER_MAX_HEIGHT, HEADER_MIN_HEIGHT],
+    inputRange: [0, headerMaxHeight - HEADER_MIN_HEIGHT],
+    outputRange: [headerMaxHeight, HEADER_MIN_HEIGHT],
     extrapolate: 'clamp',
   });
 
@@ -467,7 +469,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
         <Animated.View style={[styles.headerContainer, { height: headerHeight, backgroundColor: theme.colors.surface }]}> 
           {loading ? (
             <View style={styles.headerSkeleton}>
-              <Skeleton height={HEADER_MAX_HEIGHT} radius={0} baseColor={theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} highlightColor={theme.isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)'} />
+              <Skeleton height={headerMaxHeight} radius={0} baseColor={theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} highlightColor={theme.isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)'} />
             </View>
           ) : (
             <Animated.View style={{ opacity: headerOpacity }}>
@@ -1037,7 +1039,7 @@ const styles = StyleSheet.create({
   imageIndicator: {
     position: 'absolute',
     top: 16,
-    right: 16,
+    left: 16,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     paddingHorizontal: 12,
     paddingVertical: 6,
