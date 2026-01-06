@@ -23,9 +23,13 @@ public class ReviewController {
     private final ReviewService reviewService;
     
     @PostMapping
-    public ResponseEntity<ReviewDTO> createReview(@Valid @RequestBody CreateReviewDTO createReviewDTO) {
-        ReviewDTO review = reviewService.createReview(createReviewDTO);
-        return ResponseEntity.status(HttpStatus.CREATED).body(review);
+    public ResponseEntity<?> createReview(@Valid @RequestBody CreateReviewDTO createReviewDTO) {
+        try {
+            ReviewDTO review = reviewService.createReview(createReviewDTO);
+            return ResponseEntity.status(HttpStatus.CREATED).body(review);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
 
     @PutMapping("/{reviewId}")
@@ -36,6 +40,8 @@ public class ReviewController {
         try {
             ReviewDTO updated = reviewService.updateReview(reviewId, updateReviewDTO);
             return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (IllegalStateException e) {
             if ("FORBIDDEN".equals(e.getMessage())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You can only edit your own review.");

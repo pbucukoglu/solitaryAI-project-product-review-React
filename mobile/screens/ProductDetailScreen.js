@@ -190,7 +190,14 @@ const ProductDetailScreen = ({ route, navigation }) => {
       Alert.alert('Error', 'Device ID is not ready yet. Please try again.');
       return;
     }
-    if (editComment.trim().length < 10) {
+
+    const rawComment = editComment;
+    const trimmedComment = rawComment.trim();
+    if (rawComment.length > 0 && trimmedComment.length === 0) {
+      Alert.alert('Validation Error', 'Comment must be at least 10 characters long.');
+      return;
+    }
+    if (trimmedComment.length > 0 && trimmedComment.length < 10) {
       Alert.alert('Validation Error', 'Comment must be at least 10 characters long.');
       return;
     }
@@ -198,7 +205,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
     try {
       setEditSubmitting(true);
       await reviewService.update(editingReviewId, {
-        comment: editComment.trim(),
+        comment: rawComment,
         rating: editRating,
         reviewerName: editReviewerName.trim() || undefined,
         deviceId,
@@ -368,7 +375,9 @@ const ProductDetailScreen = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       )}
-      <Text style={[styles.reviewComment, { color: theme.colors.textSecondary }]}>{item.comment}</Text>
+      {!!item.comment?.trim() && (
+        <Text style={[styles.reviewComment, { color: theme.colors.textSecondary }]}>{item.comment}</Text>
+      )}
     </View>
     );
   };
@@ -738,12 +747,12 @@ const ProductDetailScreen = ({ route, navigation }) => {
                 <Text style={[styles.editRatingText, { color: theme.colors.text }]}>{editRating} / 5</Text>
               </View>
 
-              <Text style={[styles.editLabel, { color: theme.colors.text }]}>Review Comment *</Text>
+              <Text style={[styles.editLabel, { color: theme.colors.text }]}>Review Comment (Optional)</Text>
               <TextInput
                 style={[styles.editInput, styles.editTextArea, { color: theme.colors.text, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt }]}
                 value={editComment}
                 onChangeText={setEditComment}
-                placeholder="Write your review (minimum 10 characters)"
+                placeholder="Write your review (optional)"
                 placeholderTextColor={theme.colors.textSecondary}
                 multiline
                 numberOfLines={6}

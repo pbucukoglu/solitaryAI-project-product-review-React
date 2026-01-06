@@ -25,9 +25,18 @@ public class ReviewService {
         Product product = productRepository.findById(createReviewDTO.getProductId())
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + createReviewDTO.getProductId()));
         
+        String rawComment = createReviewDTO.getComment();
+        String trimmedComment = rawComment == null ? "" : rawComment.trim();
+        if (rawComment != null && !rawComment.isEmpty() && trimmedComment.isEmpty()) {
+            throw new IllegalArgumentException("Comment must be at least 10 characters");
+        }
+        if (!trimmedComment.isEmpty() && trimmedComment.length() < 10) {
+            throw new IllegalArgumentException("Comment must be at least 10 characters");
+        }
+
         Review review = new Review();
         review.setProduct(product);
-        review.setComment(createReviewDTO.getComment());
+        review.setComment(trimmedComment);
         review.setRating(createReviewDTO.getRating());
         review.setReviewerName(createReviewDTO.getReviewerName() != null && !createReviewDTO.getReviewerName().isEmpty() 
                 ? createReviewDTO.getReviewerName() 
@@ -53,7 +62,16 @@ public class ReviewService {
             throw new IllegalStateException("FORBIDDEN");
         }
 
-        review.setComment(updateReviewDTO.getComment());
+        String rawComment = updateReviewDTO.getComment();
+        String trimmedComment = rawComment == null ? "" : rawComment.trim();
+        if (rawComment != null && !rawComment.isEmpty() && trimmedComment.isEmpty()) {
+            throw new IllegalArgumentException("Comment must be at least 10 characters");
+        }
+        if (!trimmedComment.isEmpty() && trimmedComment.length() < 10) {
+            throw new IllegalArgumentException("Comment must be at least 10 characters");
+        }
+
+        review.setComment(trimmedComment);
         review.setRating(updateReviewDTO.getRating());
         review.setReviewerName(updateReviewDTO.getReviewerName() != null && !updateReviewDTO.getReviewerName().isEmpty()
                 ? updateReviewDTO.getReviewerName()

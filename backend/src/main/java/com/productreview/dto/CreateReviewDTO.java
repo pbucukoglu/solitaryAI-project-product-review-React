@@ -13,8 +13,7 @@ public class CreateReviewDTO {
     @NotNull(message = "Product ID is required")
     private Long productId;
     
-    @NotBlank(message = "Comment is required")
-    @Size(min = 10, max = 2000, message = "Comment must be between 10 and 2000 characters")
+    @Size(max = 2000, message = "Comment must be at most 2000 characters")
     private String comment;
     
     @NotNull(message = "Rating is required")

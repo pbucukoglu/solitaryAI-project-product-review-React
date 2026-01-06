@@ -32,13 +32,19 @@ const AddReviewScreen = ({ route, navigation }) => {
   const starScales = useRef([0, 1, 2, 3, 4].map(() => new Animated.Value(1))).current;
 
   const handleSubmit = async () => {
-    if (comment.trim().length < 10) {
-      Alert.alert('Validation Error', 'Comment must be at least 10 characters long.');
+    if (rating < 1 || rating > 5) {
+      Alert.alert('Validation Error', 'Rating must be between 1 and 5.');
       return;
     }
 
-    if (rating < 1 || rating > 5) {
-      Alert.alert('Validation Error', 'Rating must be between 1 and 5.');
+    const rawComment = comment;
+    const trimmedComment = rawComment.trim();
+    if (rawComment.length > 0 && trimmedComment.length === 0) {
+      Alert.alert('Validation Error', 'Comment must be at least 10 characters long.');
+      return;
+    }
+    if (trimmedComment.length > 0 && trimmedComment.length < 10) {
+      Alert.alert('Validation Error', 'Comment must be at least 10 characters long.');
       return;
     }
 
@@ -47,7 +53,7 @@ const AddReviewScreen = ({ route, navigation }) => {
       const deviceId = await deviceService.getDeviceId();
       await reviewService.create({
         productId,
-        comment: comment.trim(),
+        comment: rawComment,
         rating,
         reviewerName: reviewerName.trim() || undefined,
         deviceId,
@@ -125,12 +131,12 @@ const AddReviewScreen = ({ route, navigation }) => {
           <Text style={[styles.label, { color: theme.colors.text }]}>Rating</Text>
           {renderStarRating()}
 
-          <Text style={[styles.label, { color: theme.colors.text }]}>Review Comment *</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Review Comment (Optional)</Text>
           <TextInput
             style={[styles.input, styles.textArea, { color: theme.colors.text, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt }]}
             value={comment}
             onChangeText={setComment}
-            placeholder="Write your review (minimum 10 characters)"
+            placeholder="Write your review (optional)"
             placeholderTextColor={theme.colors.textSecondary}
             multiline
             numberOfLines={6}
