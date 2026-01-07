@@ -3,10 +3,8 @@ import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useColorScheme } from 'react-native';
 
-import { ThemeContext } from './context/ThemeContext';
-import { createTheme } from './components/theme';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 
 import ProductListScreen from './screens/ProductListScreen';
 import ProductDetailScreen from './screens/ProductDetailScreen';
@@ -15,38 +13,37 @@ import SettingsScreen from './screens/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
 
-export default function App() {
-  const colorScheme = useColorScheme();
-  const appTheme = createTheme(colorScheme);
-  const navTheme = colorScheme === 'dark'
+const AppShell = () => {
+  const { theme } = useTheme();
+
+  const navTheme = theme?.isDark
     ? {
         ...DarkTheme,
         colors: {
           ...DarkTheme.colors,
-          background: appTheme.colors.background,
-          card: appTheme.colors.surface,
-          text: appTheme.colors.text,
-          border: appTheme.colors.border,
-          primary: appTheme.colors.primary,
+          background: theme.colors.background,
+          card: theme.colors.surface,
+          text: theme.colors.text,
+          border: theme.colors.border,
+          primary: theme.colors.primary,
         },
       }
     : {
         ...DefaultTheme,
         colors: {
           ...DefaultTheme.colors,
-          background: appTheme.colors.background,
-          card: appTheme.colors.surface,
-          text: appTheme.colors.text,
-          border: appTheme.colors.border,
-          primary: appTheme.colors.primary,
+          background: theme.colors.background,
+          card: theme.colors.surface,
+          text: theme.colors.text,
+          border: theme.colors.border,
+          primary: theme.colors.primary,
         },
       };
 
   return (
     <SafeAreaProvider>
-      <ThemeContext.Provider value={{ theme: appTheme }}>
-        <NavigationContainer theme={navTheme}>
-        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <NavigationContainer theme={navTheme}>
+        <StatusBar style={theme?.isDark ? 'light' : 'dark'} />
         <Stack.Navigator
           initialRouteName="ProductList"
           screenOptions={{
@@ -67,22 +64,38 @@ export default function App() {
           <Stack.Screen 
             name="ProductDetail" 
             component={ProductDetailScreen}
-            options={{ title: 'Product Details' }}
+            options={{
+              title: 'Product Details',
+              animation: 'fade_from_bottom',
+            }}
           />
           <Stack.Screen 
             name="AddReview" 
             component={AddReviewScreen}
-            options={{ title: 'Add Review' }}
+            options={{
+              title: 'Add Review',
+              animation: 'slide_from_bottom',
+            }}
           />
           <Stack.Screen 
             name="Settings" 
             component={SettingsScreen}
-            options={{ title: 'Settings' }}
+            options={{
+              title: 'Settings',
+              animation: 'slide_from_right',
+            }}
           />
         </Stack.Navigator>
-        </NavigationContainer>
-      </ThemeContext.Provider>
+      </NavigationContainer>
     </SafeAreaProvider>
+  );
+};
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppShell />
+    </ThemeProvider>
   );
 }
 

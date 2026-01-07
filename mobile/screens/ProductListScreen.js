@@ -13,22 +13,23 @@ import {
   TextInput,
   Modal,
   ScrollView,
-  useColorScheme,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { productService } from '../services/api';
 import { wishlistService } from '../services/wishlist';
 import { demoService } from '../services/demoService';
+import { useTheme } from '../context/ThemeContext';
 
 import OfflineBanner from '../components/OfflineBanner';
 import DemoBanner from '../components/DemoBanner';
 import Skeleton, { SkeletonRow } from '../components/Skeleton';
-import { createTheme } from '../components/theme';
+import ProductCard from '../components/ProductCard';
 
 const ProductListScreen = ({ navigation }) => {
-  const colorScheme = useColorScheme();
-  const theme = useMemo(() => createTheme(colorScheme), [colorScheme]);
+  const { theme } = useTheme();
+
+  const entranceProgress = useRef(new Animated.Value(0)).current;
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -263,6 +264,19 @@ const ProductListScreen = ({ navigation }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only on mount
 
+  useEffect(() => {
+    if (loading) return;
+    if (!products || products.length === 0) return;
+
+    entranceProgress.setValue(0);
+    Animated.spring(entranceProgress, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 14,
+      bounciness: 6,
+    }).start();
+  }, [loading, products, entranceProgress]);
+
   useFocusEffect(
     React.useCallback(() => {
       loadWishlist();
@@ -356,47 +370,19 @@ const ProductListScreen = ({ navigation }) => {
     setPage(0);
   };
 
-  const renderProduct = ({ item }) => {
-    const firstImage = item.imageUrls && item.imageUrls.length > 0 ? item.imageUrls[0] : null;
+  const renderProduct = ({ item, index }) => {
     const isFavorite = favoriteIds.has(item.id);
-    
+
     return (
-      <TouchableOpacity
-        style={[styles.productCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+      <ProductCard
+        item={item}
+        isFavorite={isFavorite}
         onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
-      >
-        <TouchableOpacity
-          style={[styles.favoriteButton, { backgroundColor: theme.colors.surface }]}
-          onPress={() => toggleFavorite(item.id)}
-          hitSlop={{ top: 12, left: 12, right: 12, bottom: 12 }}
-        >
-          <Ionicons
-            name={isFavorite ? 'heart' : 'heart-outline'}
-            size={20}
-            color={isFavorite ? theme.colors.danger : theme.colors.textSecondary}
-          />
-        </TouchableOpacity>
-        {firstImage && (
-          <Image 
-            source={{ uri: firstImage }} 
-            style={[styles.productImage, { backgroundColor: theme.colors.surfaceAlt }]}
-            resizeMode="cover"
-          />
-        )}
-        <View style={[styles.productInfo, { backgroundColor: theme.colors.surface }]}>
-          <Text style={[styles.productName, { color: theme.colors.text }]}>{item.name}</Text>
-          <Text style={[styles.productCategory, { color: theme.colors.textSecondary }]}>{item.category}</Text>
-          <View style={styles.productMeta}>
-            <Text style={[styles.productPrice, { color: theme.colors.primary }]}>${item.price.toFixed(2)}</Text>
-            {item.reviewCount > 0 && (
-              <View style={styles.ratingContainer}>
-                <Text style={[styles.ratingText, { color: theme.colors.text }]}>⭐ {item.averageRating.toFixed(1)}</Text>
-                <Text style={[styles.reviewCount, { color: theme.colors.textSecondary }]}>({item.reviewCount})</Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </TouchableOpacity>
+        onToggleFavorite={() => toggleFavorite(item.id)}
+        entranceIndex={index}
+        entranceProgress={entranceProgress}
+        style={{ marginBottom: 14 }}
+      />
     );
   };
 
@@ -423,20 +409,23 @@ const ProductListScreen = ({ navigation }) => {
       {isDemoMode && <DemoBanner onTryAgain={tryReconnect} />}
       {/* Search and Filter Bar */}
       <View style={[styles.searchBar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <TextInput
-          style={[styles.searchInput, { color: theme.colors.text, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt }]}
-          placeholder="Search products..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          onSubmitEditing={handleSearch}
-          returnKeyType="search"
-          placeholderTextColor={theme.colors.textSecondary}
-        />
+        <View style={[styles.searchInputWrap, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}>
+          <Ionicons name="search" size={18} color={theme.colors.textSecondary} />
+          <TextInput
+            style={[styles.searchInput, { color: theme.colors.text }]}
+            placeholder="Search products"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+            placeholderTextColor={theme.colors.textSecondary}
+          />
+        </View>
         <TouchableOpacity
           style={[styles.filterButton, { backgroundColor: theme.colors.primary }]}
           onPress={() => setShowFilters(true)}
         >
-          <Text style={styles.filterButtonText}>Filters</Text>
+          <Ionicons name="options" size={18} color="#fff" />
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.settingsButton, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}
@@ -577,7 +566,10 @@ const ProductListScreen = ({ navigation }) => {
         transparent={true}
         onRequestClose={() => setShowFilters(false)}
       >
-        <View style={styles.modalOverlay}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]}>
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowFilters(false)}>
+            <View />
+          </TouchableOpacity>
           <Animated.View
             style={[
               styles.modalContent,
@@ -726,30 +718,44 @@ const styles = StyleSheet.create({
   },
   searchBar: {
     flexDirection: 'row',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+  },
+  searchInputWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    height: 44,
   },
   searchInput: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    borderColor: '#ddd',
-    backgroundColor: '#f5f5f5',
-    color: '#333',
+    fontSize: 15,
+    fontWeight: '700',
+    paddingVertical: 0,
   },
   filterButton: {
-    padding: 12,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     marginLeft: 12,
     justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#6200ee',
   },
-  filterButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+  settingsButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    marginLeft: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
   },
   favoritesToggleRow: {
     flexDirection: 'row',
@@ -811,6 +817,7 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: 16,
+    paddingTop: 12,
   },
   productCard: {
     backgroundColor: '#fff',
@@ -907,56 +914,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-  filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginLeft: 8,
-  },
-  settingsButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginLeft: 8,
-    borderWidth: 1,
-  },
-  filterButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
   footerLoader: {
     padding: 20,
   },
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
   modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    maxHeight: '80%',
+    width: '100%',
+    maxHeight: '86%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     borderWidth: 1,
-    borderColor: '#e6e6e6',
+    overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 12,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 16,
+    fontWeight: '900',
   },
   modalClose: {
-    fontSize: 24,
-    color: '#666',
+    fontSize: 18,
+    fontWeight: '900',
   },
   modalBody: {
     padding: 20,

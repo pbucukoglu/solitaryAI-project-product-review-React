@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
+import { useTheme } from '../context/ThemeContext';
 
 const OfflineBanner = ({ theme }) => {
+  const { scaleFont } = useTheme();
   const [visible, setVisible] = useState(false);
   const translateY = React.useRef(new Animated.Value(-60)).current;
 
@@ -32,6 +34,7 @@ const OfflineBanner = ({ theme }) => {
           transform: [{ translateY }],
           backgroundColor: theme?.colors?.surface || '#ffffff',
           borderColor: theme?.colors?.border || '#e6e6e6',
+          shadowColor: theme?.colors?.shadow || '#000',
         },
       ]}
     >
@@ -45,7 +48,7 @@ const OfflineBanner = ({ theme }) => {
         <Text
           style={[
             styles.text,
-            { color: theme?.colors?.textSecondary || '#666' },
+            { color: theme?.colors?.textSecondary || '#666', fontSize: scaleFont(13) },
           ]}
         >
           You are offline
@@ -58,11 +61,16 @@ const OfflineBanner = ({ theme }) => {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+    top: 10,
+    left: 12,
+    right: 12,
     zIndex: 50,
-    borderBottomWidth: 1,
+    borderWidth: 1,
+    borderRadius: 14,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.14,
+    shadowRadius: 18,
+    elevation: 6,
   },
   inner: {
     flexDirection: 'row',
@@ -78,7 +86,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
 

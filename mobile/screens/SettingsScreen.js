@@ -2,174 +2,113 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ScrollView,
-  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { demoService } from '../services/demoService';
-import { createTheme } from '../components/theme';
+import Constants from 'expo-constants';
+import { useTheme } from '../context/ThemeContext';
 
 const SettingsScreen = ({ navigation }) => {
-  const [baseUrl, setBaseUrl] = useState('');
-  const [tempBaseUrl, setTempBaseUrl] = useState('');
-  const [testing, setTesting] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState(null);
-  const colorScheme = 'light'; // You can make this dynamic
-  const theme = createTheme(colorScheme);
+  const { theme, themePreference, setThemePreference, fontScale, setFontScale, scaleFont } = useTheme();
+  const [selectedTheme, setSelectedTheme] = useState(themePreference || 'system');
+  const [selectedFontScale, setSelectedFontScale] = useState(fontScale || 1);
+
+  const appName = Constants?.expoConfig?.name || Constants?.manifest?.name || 'Claro';
+  const appVersion = Constants?.expoConfig?.version || Constants?.manifest?.version;
 
   useEffect(() => {
-    loadBaseUrl();
-  }, []);
+    setSelectedTheme(themePreference || 'system');
+  }, [themePreference]);
 
-  const loadBaseUrl = async () => {
-    const url = await demoService.getBaseUrl();
-    setBaseUrl(url);
-    setTempBaseUrl(url);
+  useEffect(() => {
+    setSelectedFontScale(fontScale || 1);
+  }, [fontScale]);
+
+  const applyTheme = async (value) => {
+    setSelectedTheme(value);
+    await setThemePreference(value);
   };
 
-  const testConnection = async () => {
-    if (!tempBaseUrl.trim()) {
-      Alert.alert('Error', 'Please enter a base URL');
-      return;
-    }
-
-    setTesting(true);
-    setConnectionStatus(null);
-
-    try {
-      const isConnected = await demoService.testConnection(tempBaseUrl.trim());
-      setConnectionStatus(isConnected ? 'success' : 'failed');
-      
-      if (isConnected) {
-        Alert.alert('Success', 'Connection successful! Base URL saved.');
-        await demoService.setBaseUrl(tempBaseUrl.trim());
-        setBaseUrl(tempBaseUrl.trim());
-      } else {
-        Alert.alert('Failed', 'Connection failed. Please check the URL and try again.');
-      }
-    } catch (error) {
-      setConnectionStatus('failed');
-      Alert.alert('Error', 'Connection test failed. Please check the URL.');
-    } finally {
-      setTesting(false);
-    }
+  const applyFontScale = async (value) => {
+    setSelectedFontScale(value);
+    await setFontScale(value);
   };
 
-  const saveBaseUrl = async () => {
-    if (!tempBaseUrl.trim()) {
-      Alert.alert('Error', 'Please enter a base URL');
-      return;
-    }
+  const themeOptions = [
+    { key: 'system', label: 'System default', icon: 'phone-portrait-outline' },
+    { key: 'light', label: 'Light', icon: 'sunny-outline' },
+    { key: 'dark', label: 'Dark', icon: 'moon-outline' },
+  ];
 
-    await demoService.setBaseUrl(tempBaseUrl.trim());
-    setBaseUrl(tempBaseUrl.trim());
-    Alert.alert('Success', 'Base URL saved successfully!');
-  };
+  const fontOptions = [
+    { key: 'small', label: 'Small', value: 0.9 },
+    { key: 'medium', label: 'Medium', value: 1.0 },
+    { key: 'large', label: 'Large', value: 1.15 },
+  ];
 
-  const resetToDefault = async () => {
-    const defaultUrl = 'https://solitaryai-project-product-review-production.up.railway.app';
-    await demoService.setBaseUrl(defaultUrl);
-    setBaseUrl(defaultUrl);
-    setTempBaseUrl(defaultUrl);
-    Alert.alert('Reset', 'Base URL reset to default.');
-  };
+  const isFontSelected = (value) => Math.abs((selectedFontScale || 1) - value) < 0.01;
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Settings</Text>
-      </View>
-
       <View style={[styles.content, { backgroundColor: theme.colors.surface }]}>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            API Configuration
+            Appearance
           </Text>
-          
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
-              Base URL
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.colors.text,
-                  borderColor: theme.colors.border,
-                  backgroundColor: theme.colors.surfaceAlt,
-                },
-              ]}
-              value={tempBaseUrl}
-              onChangeText={setTempBaseUrl}
-              placeholder="http://localhost:8080"
-              placeholderTextColor={theme.colors.textSecondary}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <Text style={[styles.helper, { color: theme.colors.textSecondary }]}>
-              Current: {baseUrl}
-            </Text>
+
+          <View style={styles.optionGroup}>
+            <Text style={[styles.label, { color: theme.colors.textSecondary, fontSize: scaleFont(16) }]}>Theme</Text>
+            {themeOptions.map((option) => {
+              const selected = selectedTheme === option.key;
+              return (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[
+                    styles.optionRow,
+                    {
+                      backgroundColor: theme.colors.surfaceAlt,
+                      borderColor: selected ? theme.colors.primary : theme.colors.border,
+                    },
+                  ]}
+                  onPress={() => applyTheme(option.key)}
+                >
+                  <View style={styles.optionRowLeft}>
+                    <Ionicons name={option.icon} size={18} color={theme.colors.textSecondary} />
+                    <Text style={[styles.optionText, { color: theme.colors.text, fontSize: scaleFont(16) }]}>{option.label}</Text>
+                  </View>
+                  {selected && <Ionicons name="checkmark" size={20} color={theme.colors.primary} />}
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[
-                styles.testButton,
-                {
-                  backgroundColor: connectionStatus === 'success' 
-                    ? theme.colors.success 
-                    : connectionStatus === 'failed'
-                    ? theme.colors.danger
-                    : theme.colors.primary,
-                },
-              ]}
-              onPress={testConnection}
-              disabled={testing}
-            >
-              {testing ? (
-                <ActivityIndicator color="white" size="small" />
-              ) : (
-                <>
-                  <Ionicons 
-                    name={connectionStatus === 'success' ? 'checkmark' : connectionStatus === 'failed' ? 'close' : 'wifi'} 
-                    size={20} 
-                    color="white" 
-                  />
-                  <Text style={styles.buttonText}>
-                    {testing ? 'Testing...' : 'Test Connection'}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.saveButton, { backgroundColor: theme.colors.primary }]}
-              onPress={saveBaseUrl}
-            >
-              <Ionicons name="save" size={20} color="white" />
-              <Text style={styles.buttonText}>Save URL</Text>
-            </TouchableOpacity>
+          <View style={styles.optionGroup}>
+            <Text style={[styles.label, { color: theme.colors.textSecondary, fontSize: scaleFont(16) }]}>Font size</Text>
+            {fontOptions.map((option) => {
+              const selected = isFontSelected(option.value);
+              return (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[
+                    styles.optionRow,
+                    {
+                      backgroundColor: theme.colors.surfaceAlt,
+                      borderColor: selected ? theme.colors.primary : theme.colors.border,
+                    },
+                  ]}
+                  onPress={() => applyFontScale(option.value)}
+                >
+                  <View style={styles.optionRowLeft}>
+                    <Ionicons name="text-outline" size={18} color={theme.colors.textSecondary} />
+                    <Text style={[styles.optionText, { color: theme.colors.text, fontSize: scaleFont(16) }]}>{option.label}</Text>
+                  </View>
+                  {selected && <Ionicons name="checkmark" size={20} color={theme.colors.primary} />}
+                </TouchableOpacity>
+              );
+            })}
           </View>
-
-          <TouchableOpacity
-            style={[styles.resetButton, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}
-            onPress={resetToDefault}
-          >
-            <Ionicons name="refresh" size={20} color={theme.colors.textSecondary} />
-            <Text style={[styles.resetButtonText, { color: theme.colors.textSecondary }]}>
-              Reset to Default
-            </Text>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
@@ -177,13 +116,10 @@ const SettingsScreen = ({ navigation }) => {
             About
           </Text>
           <Text style={[styles.aboutText, { color: theme.colors.textSecondary }]}>
-            Product Review App v1.0
+            {appName}{appVersion ? ` v${appVersion}` : ''}
           </Text>
           <Text style={[styles.aboutText, { color: theme.colors.textSecondary }]}>
             This app automatically falls back to demo mode when the backend is unavailable.
-          </Text>
-          <Text style={[styles.aboutText, { color: theme.colors.textSecondary }]}>
-            Configure your backend URL above and test the connection.
           </Text>
         </View>
       </View>
@@ -194,20 +130,6 @@ const SettingsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: 50, // Account for status bar
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
   },
   content: {
     flex: 1,
@@ -223,64 +145,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 16,
   },
-  inputContainer: {
-    marginBottom: 16,
-  },
   label: {
-    fontSize: 16,
     fontWeight: '500',
     marginBottom: 8,
   },
-  input: {
-    borderWidth: 1,
-    borderRadius: 8,
+  optionGroup: {
+    marginBottom: 18,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
     paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-  },
-  helper: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  testButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  saveButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  resetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    gap: 8,
+    marginBottom: 10,
   },
-  resetButtonText: {
-    fontSize: 16,
+  optionRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  optionText: {
     fontWeight: '600',
   },
   aboutText: {

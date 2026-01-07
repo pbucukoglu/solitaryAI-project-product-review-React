@@ -19,7 +19,6 @@ import {
   Modal,
   Pressable,
   StatusBar,
-  useColorScheme,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,13 +26,12 @@ import { productService, reviewService } from '../services/api';
 import { wishlistService } from '../services/wishlist';
 import { deviceService } from '../services/device';
 import { demoService } from '../services/demoService';
+import { useTheme } from '../context/ThemeContext';
 
 import OfflineBanner from '../components/OfflineBanner';
 import DemoBanner from '../components/DemoBanner';
 import ImageCarousel from '../components/ImageCarousel';
-import RatingDistribution from '../components/RatingDistribution';
 import Skeleton, { SkeletonRow } from '../components/Skeleton';
-import { createTheme } from '../components/theme';
 import { getRelativeTime } from '../utils/timeUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -42,8 +40,7 @@ const HEADER_MIN_HEIGHT = 92;
 
 const ProductDetailScreen = ({ route, navigation }) => {
   const { productId } = route.params;
-  const colorScheme = useColorScheme();
-  const theme = useMemo(() => createTheme(colorScheme), [colorScheme]);
+  const { theme } = useTheme();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -589,8 +586,6 @@ const ProductDetailScreen = ({ route, navigation }) => {
             </>
           )}
         </View>
-
-        <RatingDistribution reviews={reviews} theme={theme} />
 
         <View style={[styles.productSection, { backgroundColor: theme.colors.surface }]}> 
           {loading ? (
