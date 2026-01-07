@@ -458,6 +458,12 @@ const ProductListScreen = ({ navigation }) => {
   };
 
   const onProductPress = useCallback((item) => {
+    console.log('🔍 [ProductList] Navigating to ProductDetail with item:', JSON.stringify(item, null, 2));
+    if (!item || !item.id) {
+      console.error('🔍 [ProductList] Error: productId is undefined for item:', JSON.stringify(item, null, 2));
+      Alert.alert('Error', 'Unable to load product details. Invalid product data.');
+      return;
+    }
     console.log('🔍 [ProductList] Navigating to ProductDetail with productId:', item.id);
     navigation.navigate('ProductDetail', { productId: item.id });
   }, [navigation]);
