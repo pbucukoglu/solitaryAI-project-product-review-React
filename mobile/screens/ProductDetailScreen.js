@@ -26,10 +26,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { productService, reviewService } from '../services/api';
 import { wishlistService } from '../services/wishlist';
 import { deviceService } from '../services/device';
+import { demoService } from '../services/demoService';
 
 import OfflineBanner from '../components/OfflineBanner';
+import DemoBanner from '../components/DemoBanner';
+import ImageCarousel from '../components/ImageCarousel';
+import RatingDistribution from '../components/RatingDistribution';
 import Skeleton, { SkeletonRow } from '../components/Skeleton';
 import { createTheme } from '../components/theme';
+import { getRelativeTime } from '../utils/timeUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const HEADER_MAX_HEIGHT = 320;
@@ -48,6 +53,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [reviewsPage, setReviewsPage] = useState(0);
   const [reviewsHasMore, setReviewsHasMore] = useState(true);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const [reviewsLoadingMore, setReviewsLoadingMore] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const imageListRef = useRef(null);
@@ -75,9 +81,21 @@ const ProductDetailScreen = ({ route, navigation }) => {
       setLoading(true);
       const productData = await productService.getById(productId);
       setProduct(productData);
+      
+      // Check if we're in demo mode after the API call
+      const demoMode = await demoService.shouldUseDemoMode();
+      setIsDemoMode(demoMode);
+      
+      // If product has reviews from API, set them
+      if (productData.reviews) {
+        setReviews(productData.reviews);
+      }
     } catch (error) {
       console.error('Error loading product:', error);
-      Alert.alert('Error', 'Failed to load product details.');
+      // Don't show error for demo mode fallback
+      if (!error.message || !error.message.includes('DEMO_MODE_FALLBACK')) {
+        Alert.alert('Error', 'Failed to load product details.');
+      }
     } finally {
       setLoading(false);
     }
@@ -344,7 +362,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
             <Text style={[styles.reviewerName, { color: theme.colors.text }]}>{item.reviewerName || 'Anonymous'}</Text>
             {item.createdAt && (
               <Text style={[styles.reviewDate, { color: theme.colors.textSecondary }]}>
-                {new Date(item.createdAt).toLocaleDateString()}
+                {getRelativeTime(item.createdAt)}
               </Text>
             )}
           </View>
@@ -386,7 +404,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
     ? product.imageUrls 
     : [];
 
-  const headerMaxHeight = images.length > 1 ? 392 : HEADER_MAX_HEIGHT;
+  const headerMaxHeight = HEADER_MAX_HEIGHT; // Simplified - no dynamic height based on image count
 
   const headerHeight = scrollY.interpolate({
     inputRange: [0, headerMaxHeight - HEADER_MIN_HEIGHT],
@@ -436,6 +454,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
     <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} />
       <OfflineBanner theme={theme} />
+      {isDemoMode && <DemoBanner onTryAgain={refreshAll} />}
 
       <TouchableOpacity
         style={[styles.favoriteButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
@@ -482,55 +501,10 @@ const ProductDetailScreen = ({ route, navigation }) => {
             </View>
           ) : (
             <Animated.View style={{ opacity: headerOpacity }}>
-              {images.length > 0 ? (
-                <View style={styles.imageGallery}>
-                  <View style={styles.mainImageWrapper}>
-                    <FlatList
-                      ref={imageListRef}
-                      data={images}
-                      renderItem={renderImage}
-                      keyExtractor={(item, index) => index.toString()}
-                      horizontal
-                      pagingEnabled
-                      showsHorizontalScrollIndicator={false}
-                      onMomentumScrollEnd={(event) => {
-                        const index = Math.round(
-                          event.nativeEvent.contentOffset.x / SCREEN_WIDTH
-                        );
-                        setSelectedImageIndex(index);
-                      }}
-                      onScrollToIndexFailed={(info) => {
-                        const wait = new Promise(resolve => setTimeout(resolve, 400));
-                        wait.then(() => {
-                          imageListRef.current?.scrollToIndex({ index: info.index, animated: false });
-                        });
-                      }}
-                      style={styles.mainImageContainer}
-                    />
-                    {images.length > 1 && (
-                      <View style={styles.imageIndicator}>
-                        <Text style={styles.imageIndicatorText}>
-                          {selectedImageIndex + 1} / {images.length}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  {images.length > 1 && (
-                    <FlatList
-                      data={images}
-                      renderItem={renderImageThumbnail}
-                      keyExtractor={(item, index) => `thumb-${index}`}
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.thumbnailContainer}
-                    />
-                  )}
-                </View>
-              ) : (
-                <View style={[styles.noImageContainer, { backgroundColor: theme.colors.surfaceAlt }]}> 
-                  <Text style={[styles.noImageText, { color: theme.colors.textSecondary }]}>No images</Text>
-                </View>
-              )}
+              <ImageCarousel 
+                images={product?.imageUrls || []} 
+                loading={loading} 
+              />
             </Animated.View>
           )}
         </Animated.View>
@@ -615,6 +589,8 @@ const ProductDetailScreen = ({ route, navigation }) => {
             </>
           )}
         </View>
+
+        <RatingDistribution reviews={reviews} theme={theme} />
 
         <View style={[styles.productSection, { backgroundColor: theme.colors.surface }]}> 
           {loading ? (

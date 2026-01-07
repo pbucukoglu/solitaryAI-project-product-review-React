@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react';
+import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import {
   Animated,
   View,
@@ -19,8 +19,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { productService } from '../services/api';
 import { wishlistService } from '../services/wishlist';
+import { demoService } from '../services/demoService';
 
 import OfflineBanner from '../components/OfflineBanner';
+import DemoBanner from '../components/DemoBanner';
 import Skeleton, { SkeletonRow } from '../components/Skeleton';
 import { createTheme } from '../components/theme';
 
@@ -45,6 +47,7 @@ const ProductListScreen = ({ navigation }) => {
   const [minRating, setMinRating] = useState(null);
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   const [favoritesToggleWidth, setFavoritesToggleWidth] = useState(0);
   const favoritesIndicatorX = useRef(new Animated.Value(0)).current;
@@ -142,6 +145,24 @@ const ProductListScreen = ({ navigation }) => {
     }
   }, []);
 
+  // Check demo mode status
+  const checkDemoMode = useCallback(async () => {
+    const demoMode = await demoService.shouldUseDemoMode();
+    setIsDemoMode(demoMode);
+  }, []);
+
+  // Try to reconnect to live API
+  const tryReconnect = useCallback(async () => {
+    const baseUrl = await demoService.getBaseUrl();
+    const isConnected = await demoService.testConnection(baseUrl);
+    if (isConnected) {
+      await demoService.setDemoMode(false);
+      setIsDemoMode(false);
+      // Reload products with live API
+      loadProducts(0, false);
+    }
+  }, []);
+
   const loadProducts = async (pageNum = 0, append = false, overrideFilters = null) => {
     try {
       setLoadError(null);
@@ -198,6 +219,9 @@ const ProductListScreen = ({ navigation }) => {
         Number.isFinite(maxPriceNumber) ? maxPriceNumber : null
       );
       
+      // Check if we're in demo mode after the API call
+      await checkDemoMode();
+      
       // DEBUG: Log response
       console.log('✅ [ProductList] API Response:', {
         totalElements: response.totalElements,
@@ -216,8 +240,11 @@ const ProductListScreen = ({ navigation }) => {
       setPage(pageNum);
     } catch (error) {
       console.error('Error loading products:', error);
-      setLoadError('Failed to load products.');
-      Alert.alert('Error', `Failed to load products. ${error.message || 'Please check your connection.'}`);
+      // Don't show error for demo mode fallback - the API service handles it
+      if (!error.message || !error.message.includes('DEMO_MODE_FALLBACK')) {
+        setLoadError('Failed to load products.');
+        Alert.alert('Error', `Failed to load products. ${error.message || 'Please check your connection.'}`);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -239,7 +266,8 @@ const ProductListScreen = ({ navigation }) => {
   useFocusEffect(
     React.useCallback(() => {
       loadWishlist();
-    }, [loadWishlist])
+      checkDemoMode(); // Check demo mode on focus
+    }, [loadWishlist, checkDemoMode])
   );
   
   // Combined effect: Load products when filters, sort, or search changes
@@ -392,6 +420,7 @@ const ProductListScreen = ({ navigation }) => {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <OfflineBanner theme={theme} />
+      {isDemoMode && <DemoBanner onTryAgain={tryReconnect} />}
       {/* Search and Filter Bar */}
       <View style={[styles.searchBar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <TextInput
@@ -408,6 +437,12 @@ const ProductListScreen = ({ navigation }) => {
           onPress={() => setShowFilters(true)}
         >
           <Text style={styles.filterButtonText}>Filters</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.settingsButton, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}
+          onPress={() => navigation.navigate('Settings')}
+        >
+          <Ionicons name="settings" size={20} color={theme.colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -871,6 +906,24 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  filterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  settingsButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginLeft: 8,
+    borderWidth: 1,
+  },
+  filterButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   footerLoader: {
     padding: 20,

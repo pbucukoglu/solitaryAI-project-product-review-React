@@ -15,8 +15,10 @@ import {
 } from 'react-native';
 import { reviewService } from '../services/api';
 import { deviceService } from '../services/device';
+import { demoService } from '../services/demoService';
 
 import OfflineBanner from '../components/OfflineBanner';
+import DemoBanner from '../components/DemoBanner';
 import { createTheme } from '../components/theme';
 
 const AddReviewScreen = ({ route, navigation }) => {
@@ -28,6 +30,7 @@ const AddReviewScreen = ({ route, navigation }) => {
   const [rating, setRating] = useState(5);
   const [reviewerName, setReviewerName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   const starScales = useRef([0, 1, 2, 3, 4].map(() => new Animated.Value(1))).current;
 
@@ -51,13 +54,17 @@ const AddReviewScreen = ({ route, navigation }) => {
     try {
       setSubmitting(true);
       const deviceId = await deviceService.getDeviceId();
-      await reviewService.create({
+      const result = await reviewService.create({
         productId,
         comment: rawComment,
         rating,
         reviewerName: reviewerName.trim() || undefined,
         deviceId,
       });
+
+      // Check if we're in demo mode after the API call
+      const demoMode = await demoService.shouldUseDemoMode();
+      setIsDemoMode(demoMode);
 
       Alert.alert('Success', 'Review submitted successfully!', [
         {
@@ -69,7 +76,10 @@ const AddReviewScreen = ({ route, navigation }) => {
       ]);
     } catch (error) {
       console.error('Error submitting review:', error);
-      Alert.alert('Error', 'Failed to submit review. Please try again.');
+      // Don't show error for demo mode fallback
+      if (!error.message || !error.message.includes('DEMO_MODE_FALLBACK')) {
+        Alert.alert('Error', 'Failed to submit review. Please try again.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -117,6 +127,7 @@ const AddReviewScreen = ({ route, navigation }) => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <OfflineBanner theme={theme} />
+      {isDemoMode && <DemoBanner />}
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={[styles.form, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}> 
           <Text style={[styles.label, { color: theme.colors.text }]}>Your Name (Optional)</Text>

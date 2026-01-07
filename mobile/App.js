@@ -10,6 +10,7 @@ import { createTheme } from './components/theme';
 import ProductListScreen from './screens/ProductListScreen';
 import ProductDetailScreen from './screens/ProductDetailScreen';
 import AddReviewScreen from './screens/AddReviewScreen';
+import SettingsScreen from './screens/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -70,6 +71,11 @@ export default function App() {
             name="AddReview" 
             component={AddReviewScreen}
             options={{ title: 'Add Review' }}
+          />
+          <Stack.Screen 
+            name="Settings" 
+            component={SettingsScreen}
+            options={{ title: 'Settings' }}
           />
         </Stack.Navigator>
       </NavigationContainer>
