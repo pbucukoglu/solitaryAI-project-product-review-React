@@ -33,9 +33,17 @@ public class ProductController {
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice
     ) {
-        Sort sort = sortDir.equalsIgnoreCase("DESC") 
-                ? Sort.by(sortBy).descending() 
-                : Sort.by(sortBy).ascending();
+        Sort sort;
+        if ("averageRating".equals(sortBy)) {
+            // Amazon-style: products with no rating appear last (NULLS LAST)
+            sort = sortDir.equalsIgnoreCase("DESC")
+                    ? Sort.by(Sort.Order.desc(sortBy).with(Sort.NullHandling.NULLS_LAST))
+                    : Sort.by(Sort.Order.asc(sortBy).with(Sort.NullHandling.NULLS_LAST));
+        } else {
+            sort = sortDir.equalsIgnoreCase("DESC")
+                    ? Sort.by(sortBy).descending()
+                    : Sort.by(sortBy).ascending();
+        }
         Pageable pageable = PageRequest.of(page, size, sort);
         
         Page<ProductDTO> products = productService.getAllProducts(pageable, category, search, minRating, minPrice, maxPrice);
