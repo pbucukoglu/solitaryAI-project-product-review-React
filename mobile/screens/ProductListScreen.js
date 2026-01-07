@@ -39,12 +39,13 @@ const ProductListScreen = ({ navigation }) => {
   const [loadError, setLoadError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortBy, setSortBy] = useState('reviewCount');
   const [sortDir, setSortDir] = useState('DESC');
   const [showFilters, setShowFilters] = useState(false);
   const [categories] = useState(['Electronics', 'Clothing', 'Books', 'Home & Kitchen', 'Sports & Outdoors']);
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [showFavorites, setShowFavorites] = useState(false);
+  const [favoriteProducts, setFavoriteProducts] = useState([]);
   const [minRating, setMinRating] = useState(null);
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
@@ -102,6 +103,7 @@ const ProductListScreen = ({ navigation }) => {
 
   const sortOptions = useMemo(
     () => [
+      { label: 'Most Reviewed', sortBy: 'reviewCount', sortDir: 'DESC' },
       { label: 'Newest', sortBy: 'createdAt', sortDir: 'DESC' },
       { label: 'Price: Low to High', sortBy: 'price', sortDir: 'ASC' },
       { label: 'Price: High to Low', sortBy: 'price', sortDir: 'DESC' },
@@ -128,6 +130,17 @@ const ProductListScreen = ({ navigation }) => {
     }).start();
   }, [showFavorites, favoritesToggleWidth, favoritesIndicatorX]);
 
+  useEffect(() => {
+    if (isFirstMount.current) return;
+    setPage(0);
+    if (showFavorites) {
+      loadFavoriteProducts();
+    } else {
+      loadProducts(0, false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showFavorites]);
+
   const loadWishlist = React.useCallback(async () => {
     try {
       const ids = await wishlistService.getIds();
@@ -145,6 +158,84 @@ const ProductListScreen = ({ navigation }) => {
       console.error('Error toggling wishlist:', e);
     }
   }, []);
+
+  const buildFavoriteList = useCallback((allItems, idsSet, filters) => {
+    const ids = idsSet instanceof Set ? idsSet : new Set(idsSet || []);
+    let list = (allItems || []).filter((p) => ids.has(p?.id));
+
+    if (filters?.selectedCategory) {
+      list = list.filter((p) => p?.category === filters.selectedCategory);
+    }
+    if (filters?.searchQuery && String(filters.searchQuery).trim().length > 0) {
+      const q = String(filters.searchQuery).toLowerCase();
+      list = list.filter((p) =>
+        String(p?.name || '').toLowerCase().includes(q) ||
+        String(p?.description || '').toLowerCase().includes(q)
+      );
+    }
+    if (filters?.minRating !== null && filters?.minRating !== undefined) {
+      const r = Number(filters.minRating) || 0;
+      list = list.filter((p) => (Number(p?.averageRating) || 0) >= r);
+    }
+    if (filters?.minPrice && String(filters.minPrice).trim().length > 0) {
+      const v = Number(filters.minPrice);
+      if (Number.isFinite(v)) list = list.filter((p) => (Number(p?.price) || 0) >= v);
+    }
+    if (filters?.maxPrice && String(filters.maxPrice).trim().length > 0) {
+      const v = Number(filters.maxPrice);
+      if (Number.isFinite(v)) list = list.filter((p) => (Number(p?.price) || 0) <= v);
+    }
+
+    const sortByLocal = filters?.sortBy;
+    const sortDirLocal = filters?.sortDir || 'DESC';
+    if (sortByLocal) {
+      list = [...list].sort((a, b) => {
+        const aVal = a?.[sortByLocal];
+        const bVal = b?.[sortByLocal];
+        if (aVal === bVal) return 0;
+        if (sortDirLocal === 'ASC') return aVal > bVal ? 1 : -1;
+        return bVal > aVal ? 1 : -1;
+      });
+    }
+
+    return list;
+  }, []);
+
+  const loadFavoriteProducts = useCallback(async (overrideFilters = null) => {
+    try {
+      const filters = overrideFilters || {
+        sortBy,
+        sortDir,
+        selectedCategory,
+        searchQuery,
+        minRating,
+        minPrice,
+        maxPrice,
+      };
+
+      const ids = Array.from(favoriteIds || []);
+      if (ids.length === 0) {
+        setFavoriteProducts([]);
+        return;
+      }
+
+      const results = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            return await productService.getById(id);
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const merged = results.filter(Boolean);
+      setFavoriteProducts(buildFavoriteList(merged, new Set(ids), filters));
+    } catch (e) {
+      console.error('Error loading favorite products:', e);
+      setFavoriteProducts([]);
+    }
+  }, [favoriteIds, sortBy, sortDir, selectedCategory, searchQuery, minRating, minPrice, maxPrice, buildFavoriteList]);
 
   // Check demo mode status
   const checkDemoMode = useCallback(async () => {
@@ -208,9 +299,12 @@ const ProductListScreen = ({ navigation }) => {
       const minPriceNumber = filters.minPrice && filters.minPrice.trim().length > 0 ? Number(filters.minPrice) : null;
       const maxPriceNumber = filters.maxPrice && filters.maxPrice.trim().length > 0 ? Number(filters.maxPrice) : null;
 
+      const effectivePage = showFavorites ? 0 : pageNum;
+      const effectiveSize = showFavorites ? 500 : 20;
+
       const response = await productService.getAll(
-        pageNum, 
-        20, 
+        effectivePage, 
+        effectiveSize, 
         filters.sortBy, 
         filters.sortDir, 
         filters.selectedCategory, 
@@ -231,7 +325,7 @@ const ProductListScreen = ({ navigation }) => {
         allProductNames: response.content?.map(p => p.name).join(', ') || 'none'
       });
       
-      if (append) {
+      if (!showFavorites && append) {
         setProducts((prev) => {
           const merged = [...(prev || []), ...(response.content || [])];
           const seen = new Set();
@@ -248,9 +342,14 @@ const ProductListScreen = ({ navigation }) => {
       } else {
         setProducts(response.content);
       }
-      
-      setHasMore(!response.last);
-      setPage(pageNum);
+
+      if (showFavorites) {
+        setHasMore(false);
+        setPage(0);
+      } else {
+        setHasMore(!response.last);
+        setPage(pageNum);
+      }
     } catch (error) {
       console.error('Error loading products:', error);
       // Don't show error for demo mode fallback - the API service handles it
@@ -265,7 +364,7 @@ const ProductListScreen = ({ navigation }) => {
   };
 
   // Track previous values to detect changes
-  const prevFiltersRef = useRef({ selectedCategory: null, sortBy: 'createdAt', sortDir: 'DESC', searchQuery: '', minRating: null, minPrice: '', maxPrice: '' });
+  const prevFiltersRef = useRef({ selectedCategory: null, sortBy: 'reviewCount', sortDir: 'DESC', searchQuery: '', minRating: null, minPrice: '', maxPrice: '' });
   const isFirstMount = useRef(true);
   
   // Initial load on mount
@@ -347,7 +446,11 @@ const ProductListScreen = ({ navigation }) => {
     
     const timer = setTimeout(() => {
       console.log('⏱️ [ProductList] Timer fired, calling loadProducts with:', currentFilters);
-      loadProducts(0, false, currentFilters);
+      if (showFavorites) {
+        loadFavoriteProducts(currentFilters);
+      } else {
+        loadProducts(0, false, currentFilters);
+      }
     }, delay);
 
     return () => clearTimeout(timer);
@@ -483,10 +586,10 @@ const ProductListScreen = ({ navigation }) => {
       </View>
 
       {/* Active Filters */}
-      {(selectedCategory || minRating !== null || minPrice || maxPrice || sortBy !== 'createdAt' || sortDir !== 'DESC') && (
-        <View style={[styles.activeFilters, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
+      {(selectedCategory || minRating !== null || minPrice || maxPrice || sortBy !== 'reviewCount' || sortDir !== 'DESC') && (
+        <View style={[styles.activeFilters, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}> 
           {selectedCategory && (
-            <View style={[styles.filterChip, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}>
+            <View style={[styles.filterChip, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}> 
               <Text style={[styles.filterChipText, { color: theme.colors.text }]}>Category: {selectedCategory}</Text>
               <TouchableOpacity onPress={() => setSelectedCategory(null)}>
                 <Text style={[styles.filterChipClose, { color: theme.colors.text }]}>✕</Text>
@@ -514,7 +617,7 @@ const ProductListScreen = ({ navigation }) => {
             <Text style={[styles.filterChipText, { color: theme.colors.text }]}>
               Sort: {selectedSortLabel}
             </Text>
-            <TouchableOpacity onPress={() => { setSortBy('createdAt'); setSortDir('DESC'); }}>
+            <TouchableOpacity onPress={() => { setSortBy('reviewCount'); setSortDir('DESC'); }}>
               <Text style={[styles.filterChipClose, { color: theme.colors.text }]}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -530,11 +633,7 @@ const ProductListScreen = ({ navigation }) => {
         />
       ) : (
         <FlatList
-        data={
-          showFavorites
-            ? products.filter((p) => favoriteIds.has(p.id))
-            : products
-        }
+        data={showFavorites ? favoriteProducts : products}
         renderItem={renderProduct}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.list}
