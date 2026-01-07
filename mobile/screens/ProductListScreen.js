@@ -364,8 +364,7 @@ const ProductListScreen = ({ navigation }) => {
   useFocusEffect(
     React.useCallback(() => {
       loadWishlist();
-      checkDemoMode(); // Check demo mode on focus
-    }, [loadWishlist, checkDemoMode])
+    }, [loadWishlist])
   );
   
   // Combined effect: Load products when filters, sort, or search changes
