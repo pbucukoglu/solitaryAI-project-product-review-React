@@ -39,6 +39,7 @@ const REVIEWS_PAGE_SIZE = 10;
 
 const ProductDetailScreen = ({ route, navigation }) => {
   const { productId } = route.params;
+  console.log('🔍 [ProductDetail] Received productId:', productId);
   const { theme } = useTheme();
 
   const [product, setProduct] = useState(null);
@@ -1375,5 +1376,3 @@ const styles = StyleSheet.create({
 });
 
 export default ProductDetailScreen;
-
-

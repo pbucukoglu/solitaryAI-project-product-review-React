@@ -457,6 +457,11 @@ const ProductListScreen = ({ navigation }) => {
     setPage(0);
   };
 
+  const onProductPress = useCallback((item) => {
+    console.log('🔍 [ProductList] Navigating to ProductDetail with productId:', item.id);
+    navigation.navigate('ProductDetail', { productId: item.id });
+  }, [navigation]);
+
   const renderProduct = ({ item, index }) => {
     const isFavorite = favoriteIds.has(item.id);
 
@@ -464,7 +469,7 @@ const ProductListScreen = ({ navigation }) => {
       <ProductCard
         item={item}
         isFavorite={isFavorite}
-        onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
+        onPress={onProductPress}
         onToggleFavorite={() => toggleFavorite(item.id)}
         entranceIndex={index}
         entranceProgress={entranceProgress}

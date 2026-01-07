@@ -106,6 +106,7 @@ export const reviewService = {
   },
   
   getByProductId: async (productId, page = 0, size = 20, sortBy = 'createdAt', sortDir = 'DESC', minRating = null) => {
+    console.log('🌐 [API] reviewService.getByProductId called with productId:', productId);
     const params = { page, size, sortBy, sortDir };
     if (minRating !== null && minRating !== undefined) {
       params.minRating = minRating;
@@ -130,4 +131,3 @@ export const reviewService = {
 };
 
 export default api;
-
