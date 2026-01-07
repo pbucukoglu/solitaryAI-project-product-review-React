@@ -25,11 +25,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { productService, reviewService } from '../services/api';
 import { wishlistService } from '../services/wishlist';
 import { deviceService } from '../services/device';
-import { demoService } from '../services/demoService';
 import { useTheme } from '../context/ThemeContext';
 
 import OfflineBanner from '../components/OfflineBanner';
-import DemoBanner from '../components/DemoBanner';
 import ImageCarousel from '../components/ImageCarousel';
 import Skeleton, { SkeletonRow } from '../components/Skeleton';
 import { getRelativeTime } from '../utils/timeUtils';
@@ -51,7 +49,6 @@ const ProductDetailScreen = ({ route, navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [reviewsPage, setReviewsPage] = useState(0);
   const [reviewsHasMore, setReviewsHasMore] = useState(true);
-  const [isDemoMode, setIsDemoMode] = useState(false);
   const [reviewsLoadingMore, setReviewsLoadingMore] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const imageListRef = useRef(null);
@@ -79,16 +76,9 @@ const ProductDetailScreen = ({ route, navigation }) => {
       setLoading(true);
       const productData = await productService.getById(productId);
       setProduct(productData);
-      
-      // Check if we're in demo mode after the API call
-      const demoMode = await demoService.shouldUseDemoMode();
-      setIsDemoMode(demoMode);
     } catch (error) {
       console.error('Error loading product:', error);
-      // Don't show error for demo mode fallback
-      if (!error.message || !error.message.includes('DEMO_MODE_FALLBACK')) {
-        Alert.alert('Error', 'Failed to load product details.');
-      }
+      Alert.alert('Error', 'Failed to load product details.');
     } finally {
       setLoading(false);
     }
@@ -512,7 +502,6 @@ const ProductDetailScreen = ({ route, navigation }) => {
     <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} />
       <OfflineBanner theme={theme} />
-      {isDemoMode && <DemoBanner onTryAgain={refreshAll} />}
 
       <TouchableOpacity
         style={[styles.favoriteButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}

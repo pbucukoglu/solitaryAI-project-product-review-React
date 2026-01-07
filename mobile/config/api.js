@@ -20,53 +20,16 @@ import Constants from 'expo-constants';
 //
 // ============================================================================
 
-// Manual override for physical device testing (Expo Go)
-// Set this to your computer's LAN IP address when testing on a physical device
-const PHYSICAL_DEVICE_IP = '192.168.1.20'; // Your computer's IP address
-
 // Determine API base URL based on environment
 const getApiBaseUrl = () => {
-  // PRIORITY 1: For production builds (APK), use URL from app.json
-  // This takes precedence over everything else in production
-  if (!__DEV__ && Constants.expoConfig?.extra?.apiUrl) {
-    const prodUrl = Constants.expoConfig.extra.apiUrl;
-    if (prodUrl && !prodUrl.includes('YOUR_PRODUCTION') && !prodUrl.includes('YOUR_')) {
-      return prodUrl;
-    }
-  }
-  
-  // PRIORITY 2: If PHYSICAL_DEVICE_IP is configured, ALWAYS use it in development
-  // This ensures Expo Go on physical devices works correctly
-  // Check this BEFORE emulator detection to avoid conflicts
-  if (__DEV__ && PHYSICAL_DEVICE_IP && !PHYSICAL_DEVICE_IP.includes('YOUR_') && !PHYSICAL_DEVICE_IP.includes('YOUR_COMPUTER')) {
-    return `http://${PHYSICAL_DEVICE_IP}:8080`;
-  }
-  
-  // PRIORITY 3: Check if running on emulator/simulator (for development)
-  // This works for both Expo Go and APK in emulator
-  const isEmulator = !Constants.isDevice;
-  
-  if (isEmulator) {
-    if (Platform.OS === 'android') {
-      // Android Emulator: Use special IP that maps to host machine's localhost
-      // Works for both Expo Go and APK in emulator
-      return 'http://10.0.2.2:8080';
-    } else if (Platform.OS === 'ios') {
-      // iOS Simulator can use localhost (Mac only)
-      return 'http://localhost:8080';
-    }
-  }
-  
-  // PRIORITY 4: For production APK on physical device
-  // If app.json apiUrl is not set, try to use PHYSICAL_DEVICE_IP as fallback
-  // (This is useful if building APK for testing on same network)
-  if (!__DEV__ && PHYSICAL_DEVICE_IP && !PHYSICAL_DEVICE_IP.includes('YOUR_') && !PHYSICAL_DEVICE_IP.includes('YOUR_COMPUTER')) {
-    console.warn('⚠️  Using PHYSICAL_DEVICE_IP in production. Set app.json extra.apiUrl for production backend.');
-    return `http://${PHYSICAL_DEVICE_IP}:8080`;
+  // Prefer app.json extra.apiUrl in ALL environments so emulator + APK behave identically
+  const apiUrl = Constants.expoConfig?.extra?.apiUrl;
+  if (apiUrl && !apiUrl.includes('YOUR_')) {
+    return apiUrl;
   }
   
   // Final fallback
-  console.warn('⚠️  Using localhost fallback. If on physical device, set PHYSICAL_DEVICE_IP in mobile/config/api.js');
+  console.warn('⚠️  Using localhost fallback. Set app.json extra.apiUrl to your backend URL.');
   return 'http://localhost:8080';
 };
 
