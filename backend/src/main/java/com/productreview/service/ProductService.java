@@ -130,6 +130,7 @@ public class ProductService {
                         review.getRating(),
                         review.getReviewerName(),
                         review.getDeviceId(),
+                        review.getHelpfulCount() == null ? 0L : review.getHelpfulCount(),
                         review.getCreatedAt()
                 ))
                 .collect(Collectors.toList());
