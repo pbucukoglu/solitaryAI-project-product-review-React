@@ -28,6 +28,11 @@
         "INTERNET"
       ]
     },
-    "web": {}
+    "web": {},
+    "extra": {
+      "eas": {
+        "projectId": "cde56bf2-34d7-4dee-8ed3-f556d2753eac"
+      }
+    }
   }
 }
