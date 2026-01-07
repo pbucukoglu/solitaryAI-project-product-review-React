@@ -12,6 +12,7 @@ export const createTheme = (scheme) => {
       textSecondary: isDark ? '#a7b0c0' : '#666666',
       border: isDark ? 'rgba(255,255,255,0.08)' : '#e6e6e6',
       primary: '#6200ee',
+      warning: isDark ? '#f59e0b' : '#b45309',
       danger: '#d32f2f',
       shadow: isDark ? '#000000' : '#000000',
       overlay: 'rgba(0,0,0,0.6)',

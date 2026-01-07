@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useTheme } from '@react-navigation/native';
+import { useTheme } from '../context/ThemeContext';
 
 const DemoBanner = ({ onTryAgain }) => {
   const { theme } = useTheme();
