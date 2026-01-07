@@ -48,6 +48,53 @@ const ProductListScreen = ({ navigation }) => {
 
   const [favoritesToggleWidth, setFavoritesToggleWidth] = useState(0);
   const favoritesIndicatorX = useRef(new Animated.Value(0)).current;
+  const filterModalSlideY = useRef(new Animated.Value(100)).current;
+  const filterModalOpacity = useRef(new Animated.Value(0)).current;
+  const filterModalScale = useRef(new Animated.Value(0.95)).current;
+
+  useEffect(() => {
+    if (showFilters) {
+      Animated.parallel([
+        Animated.spring(filterModalSlideY, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 65,
+          friction: 8,
+        }),
+        Animated.timing(filterModalOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.spring(filterModalScale, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 100,
+          friction: 8,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.spring(filterModalSlideY, {
+          toValue: 100,
+          useNativeDriver: true,
+          tension: 65,
+          friction: 8,
+        }),
+        Animated.timing(filterModalOpacity, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.spring(filterModalScale, {
+          toValue: 0.95,
+          useNativeDriver: true,
+          tension: 100,
+          friction: 8,
+        }),
+      ]).start();
+    }
+  }, [showFilters]);
 
   const sortOptions = useMemo(
     () => [
@@ -491,12 +538,19 @@ const ProductListScreen = ({ navigation }) => {
       {/* Filter Modal */}
       <Modal
         visible={showFilters}
-        animationType="slide"
+        animationType="none"
         transparent={true}
         onRequestClose={() => setShowFilters(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+          <Animated.View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              { transform: [{ translateY: filterModalSlideY }, { scale: filterModalScale }] },
+              { opacity: filterModalOpacity },
+            ]}
+          >
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Filters & Sort</Text>
               <TouchableOpacity onPress={() => setShowFilters(false)}>
@@ -614,7 +668,7 @@ const ProductListScreen = ({ navigation }) => {
                 <Text style={styles.applyButtonText}>Apply Filters</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
     </View>
