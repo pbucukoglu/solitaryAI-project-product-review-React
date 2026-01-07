@@ -1,22 +1,29 @@
 services:
   - type: web
     name: product-review-api
-    env: docker
+    env: java
     plan: free
-    dockerfilePath: ./Dockerfile
+    buildCommand: mvn clean package -DskipTests
+    startCommand: java -jar target/product-review-backend-0.0.1-SNAPSHOT.jar
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
       - key: DATABASE_URL
-        value: postgresql://product_review_db_user:K8KWwscan1y6hjb4z60d1RhAptl1Axlt@dpg-d5f7b6shg0os7380c4cg-a/product_review_db
+        fromDatabase:
+          name: product-review-db
+          property: connectionString
       - key: SPRING_DATASOURCE_URL
-        value: postgresql://product_review_db_user:K8KWwscan1y6hjb4z60d1RhAptl1Axlt@dpg-d5f7b6shg0os7380c4cg-a/product_review_db
+        fromDatabase:
+          name: product-review-db
+          property: connectionString
       - key: SPRING_DATASOURCE_USERNAME
-        value: product_review_db_user
+        fromDatabase:
+          name: product-review-db
+          property: username
       - key: SPRING_DATASOURCE_PASSWORD
-        value: K8KWwscan1y6hjb4z60d1RhAptl1Axlt
-      - key: PORT
-        value: 8080
+        fromDatabase:
+          name: product-review-db
+          property: password
 
 databases:
   - name: product-review-db

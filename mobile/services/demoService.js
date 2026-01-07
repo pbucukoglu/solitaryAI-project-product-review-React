@@ -4,8 +4,8 @@ import { demoProducts, getDemoReviewsByProductId, addDemoReview } from '../data/
 const DEMO_MODE_KEY = '@demo_mode_active';
 const BASE_URL_KEY = '@base_url';
 
-// Default base URL (Render.com cloud deployment)
-const DEFAULT_BASE_URL = 'https://product-review-api.onrender.com';
+// Default base URL (can be overridden in settings)
+const DEFAULT_BASE_URL = 'http://localhost:8080';
 
 export const demoService = {
   // Check if we should use demo mode
@@ -31,17 +31,11 @@ export const demoService = {
   // Get base URL
   async getBaseUrl() {
     try {
-      // Try to get saved URL first
-      const savedUrl = await AsyncStorage.getItem(BASE_URL_KEY);
-      if (savedUrl) {
-        return savedUrl;
-      }
-      
-      // Default to Render.com URL (change this to your actual URL)
-      return DEFAULT_BASE_URL;
+      const url = await AsyncStorage.getItem(BASE_URL_KEY);
+      return url || DEFAULT_BASE_URL;
     } catch (error) {
-      console.error('Failed to get base URL:', error);
-      return DEFAULT_BASE_URL; // Fallback to Render
+      console.error('Error getting base URL:', error);
+      return DEFAULT_BASE_URL;
     }
   },
 
