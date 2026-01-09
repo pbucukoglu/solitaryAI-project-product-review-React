@@ -3,8 +3,8 @@ package com.productreview.controller;
 import com.productreview.dto.ProductDTO;
 import com.productreview.dto.ProductDetailDTO;
 import com.productreview.dto.ReviewSummaryResponseDTO;
+import com.productreview.service.GeminiReviewSummaryService;
 import com.productreview.service.ProductService;
-import com.productreview.service.ReviewSummaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,7 +22,7 @@ import java.math.BigDecimal;
 public class ProductController {
     
     private final ProductService productService;
-    private final ReviewSummaryService reviewSummaryService;
+    private final GeminiReviewSummaryService geminiReviewSummaryService;
     
     @GetMapping
     public ResponseEntity<Page<ProductDTO>> getAllProducts(
@@ -76,9 +76,10 @@ public class ProductController {
 
     @GetMapping("/{productId}/review-summary")
     public ResponseEntity<ReviewSummaryResponseDTO> getReviewSummary(
-            @PathVariable Long productId
+            @PathVariable Long productId,
+            @RequestParam(defaultValue = "30") int limit
     ) {
-        ReviewSummaryResponseDTO summary = reviewSummaryService.getReviewSummary(productId);
+        ReviewSummaryResponseDTO summary = geminiReviewSummaryService.getReviewSummary(productId, limit);
         return ResponseEntity.ok(summary);
     }
 }
