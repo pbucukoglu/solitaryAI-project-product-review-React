@@ -1,6 +1,9 @@
 package com.productreview.entity;
 
+import com.productreview.util.ProductNameUtil;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -20,6 +23,8 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    @NotBlank(message = "Product name cannot be blank")
+    @Pattern(regexp = "^[^çğıöşüÇĞİÖŞÜ]+$", message = "Product name cannot contain Turkish characters")
     @Column(nullable = false)
     private String name;
     
@@ -55,6 +60,10 @@ public class Product {
         }
         if (reviewCount == null) {
             reviewCount = 0L;
+        }
+        // Normalize product name
+        if (name != null) {
+            name = ProductNameUtil.normalizeProductName(name);
         }
     }
 }

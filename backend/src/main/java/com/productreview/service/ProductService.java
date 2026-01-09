@@ -9,6 +9,7 @@ import com.productreview.entity.Review;
 import com.productreview.repository.ProductRepository;
 import com.productreview.repository.ReviewRepository;
 import com.productreview.spec.ProductSpecifications;
+import com.productreview.util.ProductNameUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Page;
@@ -105,7 +106,7 @@ public class ProductService {
         
         return new ProductDTO(
                 product.getId(),
-                product.getName(),
+                ProductNameUtil.normalizeProductName(product.getName()),
                 product.getDescription(),
                 product.getCategory(),
                 product.getPrice(),
@@ -137,7 +138,7 @@ public class ProductService {
         
         return new ProductDetailDTO(
                 product.getId(),
-                product.getName(),
+                ProductNameUtil.normalizeProductName(product.getName()),
                 product.getDescription(),
                 product.getCategory(),
                 product.getPrice(),
