@@ -63,28 +63,6 @@ const ReviewSummaryCard = ({
         <Text style={[styles.takeaway, { color: theme.colors.text }]}>{summary.takeaway}</Text>
       )}
 
-      {(summary.pros?.length || 0) > 0 && (
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>Pros</Text>
-          {summary.pros.map((p, idx) => (
-            <Text key={`p-${idx}`} style={[styles.bullet, { color: theme.colors.textSecondary }]}>
-              - {p}
-            </Text>
-          ))}
-        </View>
-      )}
-
-      {(summary.cons?.length || 0) > 0 && (
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>Cons</Text>
-          {summary.cons.map((c, idx) => (
-            <Text key={`c-${idx}`} style={[styles.bullet, { color: theme.colors.textSecondary }]}>
-              - {c}
-            </Text>
-          ))}
-        </View>
-      )}
-
     </View>
   );
 };
@@ -109,9 +87,9 @@ const styles = StyleSheet.create({
   },
   takeaway: {
     fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '700',
-    marginBottom: 12,
+    lineHeight: 22,
+    fontWeight: '600',
+    marginBottom: 8,
   },
   section: {
     marginTop: 10,

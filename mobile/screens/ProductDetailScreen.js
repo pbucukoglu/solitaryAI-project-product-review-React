@@ -229,7 +229,11 @@ const ProductDetailScreen = ({ route, navigation }) => {
     if (avgRounded >= 4.2) takeaway = `Most reviewers are very happy (avg ${avgRounded}/5 from ${count}).`;
     if (avgRounded <= 2.8) takeaway = `Many reviewers are dissatisfied (avg ${avgRounded}/5 from ${count}).`;
 
-    return { takeaway, pros, cons };
+    return {
+        takeaway,
+        pros: [],
+        cons: [],
+      };
   }, []);
 
   const loadReviewSummary = React.useCallback(async () => {
@@ -260,13 +264,13 @@ const ProductDetailScreen = ({ route, navigation }) => {
       setReviewSummaryError(null);
       const resp = await productService.getReviewSummary(productId, 30);
       const s = resp?.summary;
-      if (!s || typeof s.takeaway !== 'string') {
+      if (!s || typeof s.summary !== 'string') {
         throw new Error('Invalid summary');
       }
       setReviewSummary({
-        takeaway: s.takeaway,
-        pros: Array.isArray(s.pros) ? s.pros : [],
-        cons: Array.isArray(s.cons) ? s.cons : [],
+        takeaway: s.summary || '',
+        pros: [],
+        cons: [],
       });
       setReviewSummarySource(resp?.source || 'ai');
       lastFetchedSummaryForReviewCountRef.current = currentCount;

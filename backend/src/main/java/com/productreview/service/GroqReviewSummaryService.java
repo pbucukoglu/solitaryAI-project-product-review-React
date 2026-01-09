@@ -110,9 +110,10 @@ public class GroqReviewSummaryService {
 
     private String buildPrompt(Product product, List<Review> reviews) {
         StringBuilder sb = new StringBuilder();
-        sb.append("You are an assistant that summarizes product reviews. ");
-        sb.append("Return STRICT JSON ONLY with keys: takeaway (string), pros (array of strings), cons (array of strings). ");
-        sb.append("No markdown. No code fences. No extra keys.\n\n");
+        sb.append("You are an assistant that summarizes product reviews in a natural, conversational style. ");
+        sb.append("Return ONLY a raw JSON object with a single key: summary (string). ");
+        sb.append("The summary should sound like 'Users think this product...' or 'Most people feel that...' and be 1-2 sentences. ");
+        sb.append("No pros/cons lists, no markdown, no code fences, no extra text.\n\n");
 
         sb.append("Product:\n");
         sb.append("name: ").append(product.getName()).append("\n");
@@ -128,9 +129,9 @@ public class GroqReviewSummaryService {
         }
 
         sb.append("\nGuidelines:\n");
-        sb.append("- takeaway: 1 short sentence\n");
-        sb.append("- pros: 2-4 bullets\n");
-        sb.append("- cons: 2-4 bullets\n");
+        sb.append("- Write 1-2 sentences in natural language.\n");
+        sb.append("- Start with 'Users think...' or 'Most people feel...'.\n");
+        sb.append("- Do NOT include pros/cons lists.\n");
 
         return sb.toString();
     }
@@ -148,7 +149,7 @@ public class GroqReviewSummaryService {
             req.put("messages", List.of(
                     Map.of(
                             "role", "system",
-                            "content", "Return ONLY a raw JSON object with keys: takeaway (string), pros (array of strings), cons (array of strings). No markdown, no code fences, no extra text."
+                            "content", "Return ONLY a raw JSON object with a single key: summary (string). The summary should be 1-2 natural sentences like 'Users think this product...' or 'Most people feel that...'. No pros/cons lists, no markdown, no code fences, no extra text."
                     ),
                     Map.of(
                             "role", "user",
@@ -190,15 +191,11 @@ public class GroqReviewSummaryService {
             String json = extractJsonObject(raw);
             JsonNode parsed = objectMapper.readTree(json);
 
-            String takeaway = parsed.path("takeaway").asText(null);
-            List<String> pros = asStringList(parsed.path("pros"));
-            List<String> cons = asStringList(parsed.path("cons"));
-
-            if (takeaway == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Groq response missing takeaway");
+            String summary = parsed.path("summary").asText(null);
+            if (summary == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Groq response missing summary");
             }
-
-            return new ReviewSummaryDTO(takeaway, pros, cons);
+            return new ReviewSummaryDTO(summary, List.of(), List.of());
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
