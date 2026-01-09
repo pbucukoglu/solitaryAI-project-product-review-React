@@ -25,7 +25,7 @@ public class ProductController {
     public ResponseEntity<Page<ProductDTO>> getAllProducts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "reviewCount") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDir,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String search,
@@ -44,6 +44,15 @@ public class ProductController {
             sort = Sort.by(
                     Sort.Order.desc("reviewCount"),
                     ratingOrder
+            );
+        } else if ("reviewCount".equals(sortBy)) {
+            Sort.Order countOrder = sortDir.equalsIgnoreCase("DESC")
+                    ? Sort.Order.desc(sortBy).with(Sort.NullHandling.NULLS_LAST)
+                    : Sort.Order.asc(sortBy).with(Sort.NullHandling.NULLS_LAST);
+
+            sort = Sort.by(
+                    countOrder,
+                    Sort.Order.desc("averageRating").with(Sort.NullHandling.NULLS_LAST)
             );
         } else {
             sort = sortDir.equalsIgnoreCase("DESC")
