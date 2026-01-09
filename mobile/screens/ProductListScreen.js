@@ -373,6 +373,13 @@ const ProductListScreen = ({ navigation }) => {
   useFocusEffect(
     React.useCallback(() => {
       loadWishlist();
+      if (!isFirstMount.current) {
+        if (showFavorites) {
+          loadFavoriteProducts();
+        } else {
+          loadProducts(0, false);
+        }
+      }
     }, [loadWishlist])
   );
   
