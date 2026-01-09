@@ -30,6 +30,7 @@ import { useTheme } from '../context/ThemeContext';
 import OfflineBanner from '../components/OfflineBanner';
 import ImageCarousel from '../components/ImageCarousel';
 import Skeleton, { SkeletonRow } from '../components/Skeleton';
+import ReviewSummaryCard from '../components/ReviewSummaryCard';
 import { getRelativeTime } from '../utils/timeUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -53,6 +54,11 @@ const ProductDetailScreen = ({ route, navigation }) => {
   const [reviewsLoadingMore, setReviewsLoadingMore] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const imageListRef = useRef(null);
+
+  const [reviewSummaryLoading, setReviewSummaryLoading] = useState(false);
+  const [reviewSummaryError, setReviewSummaryError] = useState(null);
+  const [reviewSummary, setReviewSummary] = useState(null);
+  const [reviewSummarySource, setReviewSummarySource] = useState(null);
 
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
@@ -169,17 +175,97 @@ const ProductDetailScreen = ({ route, navigation }) => {
     }
   }, [deviceId, loadReviews]);
 
+  const buildLocalDeterministicSummary = React.useCallback(() => {
+    const usable = (reviews || []).filter((r) => (r?.comment || '').trim().length > 0);
+    const count = usable.length;
+    if (count === 0) {
+      return {
+        takeaway: 'No reviews yet.',
+        pros: [],
+        cons: [],
+      };
+    }
+
+    const avg = count > 0 ? usable.reduce((s, r) => s + (Number(r.rating) || 0), 0) / count : 0;
+    const avgRounded = Math.round(avg * 10) / 10;
+
+    const positives = usable
+      .filter((r) => Number(r.rating) >= 4)
+      .map((r) => (r.comment || '').trim())
+      .filter(Boolean);
+    const negatives = usable
+      .filter((r) => Number(r.rating) <= 2)
+      .map((r) => (r.comment || '').trim())
+      .filter(Boolean);
+
+    const pick = (arr, max) => {
+      const out = [];
+      for (const t of arr) {
+        const single = t.split(/\.|\n|\r|!|\?/)[0].trim();
+        if (!single) continue;
+        if (out.includes(single)) continue;
+        out.push(single.length > 90 ? `${single.slice(0, 90)}…` : single);
+        if (out.length >= max) break;
+      }
+      return out;
+    };
+
+    const pros = pick(positives, 3);
+    const cons = pick(negatives, 3);
+
+    let takeaway = `Based on ${count} review${count === 1 ? '' : 's'}, average rating is ${avgRounded}/5.`;
+    if (avgRounded >= 4.2) takeaway = `Most reviewers are very happy (avg ${avgRounded}/5 from ${count}).`;
+    if (avgRounded <= 2.8) takeaway = `Many reviewers are dissatisfied (avg ${avgRounded}/5 from ${count}).`;
+
+    return { takeaway, pros, cons };
+  }, [reviews]);
+
+  const loadReviewSummary = React.useCallback(async () => {
+    if (!productId) return;
+    const localFallback = buildLocalDeterministicSummary();
+
+    const total = Number(product?.reviewCount || 0) || (reviews || []).length;
+    if (!total) {
+      setReviewSummary(localFallback);
+      setReviewSummarySource('none');
+      setReviewSummaryError(null);
+      setReviewSummaryLoading(false);
+      return;
+    }
+
+    try {
+      setReviewSummaryLoading(true);
+      setReviewSummaryError(null);
+      const resp = await productService.getReviewSummary(productId, 30);
+      const s = resp?.summary;
+      if (!s || typeof s.takeaway !== 'string') {
+        throw new Error('Invalid summary');
+      }
+      setReviewSummary({
+        takeaway: s.takeaway,
+        pros: Array.isArray(s.pros) ? s.pros : [],
+        cons: Array.isArray(s.cons) ? s.cons : [],
+      });
+      setReviewSummarySource(resp?.source || 'gemini');
+    } catch (e) {
+      setReviewSummary(localFallback);
+      setReviewSummarySource('local');
+      setReviewSummaryError('AI summary unavailable. Showing local summary.');
+    } finally {
+      setReviewSummaryLoading(false);
+    }
+  }, [productId, product?.reviewCount, reviews, buildLocalDeterministicSummary]);
+
   const refreshAll = React.useCallback(async () => {
     try {
       setRefreshing(true);
-      await Promise.all([
-        loadProductDetails(),
-        loadReviews({ page: 0, append: false })
-      ]);
+      await loadProductDetails();
+      await loadReviews({ page: 0, append: false });
+      await loadReviewSummary();
     } finally {
       setRefreshing(false);
     }
-  }, [loadProductDetails, loadReviews]);
+  }, [loadProductDetails, loadReviews, loadReviewSummary]);
 
   const loadDeviceId = React.useCallback(async () => {
     try {
@@ -218,9 +304,10 @@ const ProductDetailScreen = ({ route, navigation }) => {
     React.useCallback(() => {
       console.log('🔍 [ProductDetail] useFocusEffect triggered, productId:', productId);
       refreshAll();
+      loadReviewSummary();
       loadFavoriteState();
       loadDeviceId();
-    }, [refreshAll, loadFavoriteState, loadDeviceId, productId])
+    }, [refreshAll, loadReviewSummary, loadFavoriteState, loadDeviceId, productId])
   );
 
   useEffect(() => {
@@ -645,6 +732,15 @@ const ProductDetailScreen = ({ route, navigation }) => {
             </>
           )}
         </View>
+
+        <ReviewSummaryCard
+          loading={reviewSummaryLoading}
+          summary={reviewSummary}
+          source={reviewSummarySource}
+          error={reviewSummaryError}
+          onRetry={loadReviewSummary}
+          empty={(Number(product?.reviewCount || 0) || reviews.length) === 0}
+        />
 
         <View style={[styles.productSection, { backgroundColor: theme.colors.surface }]}> 
           {loading ? (

@@ -74,6 +74,18 @@ export const productService = {
     }
     return await fetchJsonWithTimeout(`${API_BASE_URL}${API_ENDPOINTS.PRODUCTS}/${id}`, { method: 'GET' }, 15000);
   },
+
+  getReviewSummary: async (productId, limit = 30) => {
+    if (!productId) {
+      throw new Error('Not found');
+    }
+    const safeLimit = Number.isFinite(Number(limit)) ? Number(limit) : 30;
+    return await fetchJsonWithTimeout(
+      `${API_BASE_URL}${API_ENDPOINTS.PRODUCTS}/${productId}/review-summary?limit=${encodeURIComponent(safeLimit)}`,
+      { method: 'GET' },
+      15000
+    );
+  },
 };
 
 // Reviews API

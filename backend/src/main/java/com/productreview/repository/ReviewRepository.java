@@ -15,6 +15,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     
     Page<Review> findByProductId(Long productId, Pageable pageable);
 
+    @Query("SELECT r FROM Review r WHERE r.product.id = :productId ORDER BY r.createdAt DESC")
+    List<Review> findLatestByProductId(@Param("productId") Long productId, Pageable pageable);
+
     @Query("SELECT r FROM Review r WHERE r.product.id = :productId AND (:minRating IS NULL OR r.rating >= :minRating)")
     Page<Review> findByProductIdFiltered(
             @Param("productId") Long productId,
