@@ -14,7 +14,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -48,9 +47,14 @@ public class GeminiReviewSummaryService {
             return cached.value;
         }
 
-        String apiKey = System.getenv("GEMINI_API_KEY");
+        String apiKey = System.getenv("OPENAI_API_KEY");
         if (apiKey == null || apiKey.trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "GEMINI_API_KEY is not configured");
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "OPENAI_API_KEY is not configured");
+        }
+
+        String model = System.getenv("OPENAI_MODEL");
+        if (model == null || model.trim().isEmpty()) {
+            model = "gpt-4o-mini";
         }
 
         Product product = productRepository.findById(productId)
@@ -89,7 +93,7 @@ public class GeminiReviewSummaryService {
             if (e.getStatusCode() == HttpStatus.SERVICE_UNAVAILABLE) {
                 throw e;
             }
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Gemini call failed");
+            throw e;
         }
 
         ReviewSummaryResponseDTO response = new ReviewSummaryResponseDTO(
@@ -97,7 +101,7 @@ public class GeminiReviewSummaryService {
                 (long) usable.size(),
                 summary,
                 Instant.now().toString(),
-                "gemini"
+                "openai"
         );
 
         cache.put(productId, new CacheEntry(response));
@@ -133,49 +137,57 @@ public class GeminiReviewSummaryService {
 
     private ReviewSummaryDTO callGemini(String apiKey, String prompt) {
         try {
+            String model = System.getenv("OPENAI_MODEL");
+            if (model == null || model.trim().isEmpty()) {
+                model = "gpt-4o-mini";
+            }
+
             Map<String, Object> req = new HashMap<>();
-            List<Object> contents = new ArrayList<>();
-            Map<String, Object> content = new HashMap<>();
-            List<Object> parts = new ArrayList<>();
-            parts.add(Map.of("text", prompt));
-            content.put("parts", parts);
-            contents.add(content);
-            req.put("contents", contents);
-            req.put("generationConfig", Map.of(
-                    "temperature", 0.2,
-                    "maxOutputTokens", 512
+            req.put("model", model);
+            req.put("temperature", 0.2);
+            req.put("response_format", Map.of("type", "json_object"));
+            req.put("messages", List.of(
+                    Map.of(
+                            "role", "system",
+                            "content", "Return STRICT JSON ONLY with keys: takeaway (string), pros (array of strings), cons (array of strings). No markdown. No code fences. No extra keys."
+                    ),
+                    Map.of(
+                            "role", "user",
+                            "content", prompt
+                    )
             ));
 
             String body = objectMapper.writeValueAsString(req);
 
-            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey;
-
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
+                    .uri(java.net.URI.create("https://api.openai.com/v1/chat/completions"))
                     .timeout(REQUEST_TIMEOUT)
                     .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + apiKey)
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Gemini call failed");
+                String snippet = safeSnippet(response.body());
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY,
+                        "OpenAI call failed with status " + response.statusCode() + (snippet.isEmpty() ? "" : (": " + snippet))
+                );
             }
 
             JsonNode root = objectMapper.readTree(response.body());
-            JsonNode textNode = root
-                    .path("candidates")
+            JsonNode contentNode = root
+                    .path("choices")
                     .path(0)
-                    .path("content")
-                    .path("parts")
-                    .path(0)
-                    .path("text");
+                    .path("message")
+                    .path("content");
 
-            if (textNode.isMissingNode() || textNode.asText().trim().isEmpty()) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Gemini returned empty response");
+            if (contentNode.isMissingNode() || contentNode.asText().trim().isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "OpenAI returned empty response");
             }
 
-            String raw = textNode.asText();
+            String raw = contentNode.asText();
             String json = extractJsonObject(raw);
             JsonNode parsed = objectMapper.readTree(json);
 
@@ -184,15 +196,22 @@ public class GeminiReviewSummaryService {
             List<String> cons = asStringList(parsed.path("cons"));
 
             if (takeaway == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Gemini response missing takeaway");
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "OpenAI response missing takeaway");
             }
 
             return new ReviewSummaryDTO(takeaway, pros, cons);
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Gemini call failed");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "OpenAI call failed");
         }
+    }
+
+    private String safeSnippet(String body) {
+        if (body == null) return "";
+        String t = body.replace("\r", " ").replace("\n", " ").trim();
+        if (t.isEmpty()) return "";
+        return t.length() > 500 ? t.substring(0, 500) : t;
     }
 
     private List<String> asStringList(JsonNode node) {
@@ -214,7 +233,7 @@ public class GeminiReviewSummaryService {
         int start = s.indexOf('{');
         int end = s.lastIndexOf('}');
         if (start < 0 || end <= start) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Gemini response was not valid JSON");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "OpenAI response was not valid JSON");
         }
         return s.substring(start, end + 1);
     }
