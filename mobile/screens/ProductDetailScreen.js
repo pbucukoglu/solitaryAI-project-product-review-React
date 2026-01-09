@@ -56,9 +56,20 @@ const ProductDetailScreen = ({ route, navigation }) => {
   const imageListRef = useRef(null);
 
   const [reviewSummaryLoading, setReviewSummaryLoading] = useState(false);
-  const [reviewSummaryError, setReviewSummaryError] = useState(null);
   const [reviewSummary, setReviewSummary] = useState(null);
   const [reviewSummarySource, setReviewSummarySource] = useState(null);
+  const [reviewSummaryError, setReviewSummaryError] = useState(null);
+
+  const latestReviewsRef = React.useRef([]);
+  const latestReviewCountRef = React.useRef(0);
+
+  useEffect(() => {
+    latestReviewsRef.current = reviews || [];
+  }, [reviews]);
+
+  useEffect(() => {
+    latestReviewCountRef.current = Number(product?.reviewCount || 0);
+  }, [product?.reviewCount]);
 
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
@@ -93,7 +104,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
 
   const loadReviews = React.useCallback(async ({ page = 0, append = false } = {}) => {
     if (!productId) {
-      console.error('🔍 [ProductDetail] Error: productId is undefined, cannot load reviews.');
+      console.error(' [ProductDetail] Error: productId is undefined, cannot load reviews.');
       setReviewsError('Invalid product selection.');
       setReviewsLoading(false);
       setReviewsLoadingMore(false);
@@ -163,20 +174,20 @@ const ProductDetailScreen = ({ route, navigation }) => {
 
     try {
       const result = await reviewService.toggleHelpful(reviewId, deviceId);
-      console.log('✅ [Helpful] toggle result:', result);
+      console.log(' [Helpful] toggle result:', result);
 
       // Always refresh first page so counts + ordering are correct.
       setReviewsPage(0);
       setReviewsHasMore(true);
       await loadReviews({ page: 0, append: false });
     } catch (e) {
-      console.error('❌ [Helpful] toggle failed:', e);
+      console.error(' [Helpful] toggle failed:', e);
       Alert.alert('Error', 'Could not update helpful vote. Please check your connection.');
     }
   }, [deviceId, loadReviews]);
 
-  const buildLocalDeterministicSummary = React.useCallback(() => {
-    const usable = (reviews || []).filter((r) => (r?.comment || '').trim().length > 0);
+  const buildLocalDeterministicSummary = React.useCallback((inputReviews) => {
+    const usable = (inputReviews || []).filter((r) => (r?.comment || '').trim().length > 0);
     const count = usable.length;
     if (count === 0) {
       return {
@@ -218,15 +229,15 @@ const ProductDetailScreen = ({ route, navigation }) => {
     if (avgRounded <= 2.8) takeaway = `Many reviewers are dissatisfied (avg ${avgRounded}/5 from ${count}).`;
 
     return { takeaway, pros, cons };
-  }, [reviews]);
+  }, []);
 
   const loadReviewSummary = React.useCallback(async () => {
     if (!productId) return;
-    const localFallback = buildLocalDeterministicSummary();
+    const localFallback = buildLocalDeterministicSummary(latestReviewsRef.current);
 
-    const total = Number(product?.reviewCount || 0) || (reviews || []).length;
-    if (!total) {
-      setReviewSummary(localFallback);
+    const hasAnyReviews = (Number(latestReviewCountRef.current || 0) || latestReviewsRef.current.length) > 0;
+    if (!hasAnyReviews) {
+      setReviewSummary({ takeaway: '', pros: [], cons: [] });
       setReviewSummarySource('none');
       setReviewSummaryError(null);
       setReviewSummaryLoading(false);
@@ -254,7 +265,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
     } finally {
       setReviewSummaryLoading(false);
     }
-  }, [productId, product?.reviewCount, reviews, buildLocalDeterministicSummary]);
+  }, [productId]);
 
   const refreshAll = React.useCallback(async () => {
     try {
@@ -302,12 +313,11 @@ const ProductDetailScreen = ({ route, navigation }) => {
   // Reload product details when screen comes into focus (e.g., after adding a review)
   useFocusEffect(
     React.useCallback(() => {
-      console.log('🔍 [ProductDetail] useFocusEffect triggered, productId:', productId);
+      console.log(' [ProductDetail] useFocusEffect triggered, productId:', productId);
       refreshAll();
-      loadReviewSummary();
       loadFavoriteState();
       loadDeviceId();
-    }, [refreshAll, loadReviewSummary, loadFavoriteState, loadDeviceId, productId])
+    }, [refreshAll, loadFavoriteState, loadDeviceId, productId])
   );
 
   useEffect(() => {
