@@ -15,15 +15,6 @@ const normalizeLang = (lang) => {
   return SUPPORTED_LANGS.includes(base) ? base : 'en';
 };
 
-export const getDeviceLanguage = () => {
-  try {
-    const locale = Intl.DateTimeFormat().resolvedOptions().locale;
-    return normalizeLang(locale);
-  } catch {
-    return 'en';
-  }
-};
-
 export const setAppLanguage = async (lang) => {
   const normalized = normalizeLang(lang);
   await AsyncStorage.setItem(APP_LANGUAGE_STORAGE_KEY, normalized);
@@ -32,7 +23,7 @@ export const setAppLanguage = async (lang) => {
 
 const init = async () => {
   const stored = await AsyncStorage.getItem(APP_LANGUAGE_STORAGE_KEY);
-  const initial = stored ? normalizeLang(stored) : getDeviceLanguage();
+  const initial = stored ? normalizeLang(stored) : 'en';
   if (stored == null) {
     await AsyncStorage.setItem(APP_LANGUAGE_STORAGE_KEY, initial);
   }

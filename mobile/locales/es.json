@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "products": "Productos",
+    "productDetails": "Detalles del producto",
+    "addReview": "Añadir reseña",
+    "settings": "Ajustes"
+  },
+  "common": {
+    "all": "Todos",
+    "favorites": "Favoritos",
+    "apply": "Aplicar",
+    "clear": "Limpiar",
+    "cancel": "Cancelar",
+    "ok": "OK",
+    "error": "Error",
+    "success": "Éxito",
+    "loading": "Cargando...",
+    "close": "Cerrar",
+    "retry": "Reintentar"
+  },
+  "product": {
+    "description": "Descripción",
+    "reviews": "Reseñas",
+    "noReviews": "Aún no hay reseñas.",
+    "noProductsFound": "No se encontraron productos.",
+    "failedToLoad": "No se pudieron cargar los detalles del producto.",
+    "smartReviewInsights": "Insights inteligentes",
+    "pros": "Pros",
+    "cons": "Contras",
+    "topTopics": "Temas principales",
+    "localBadge": "Local"
+  },
+  "favorites": {
+    "noFavoritesYet": "Aún no hay favoritos.",
+    "noFavoritesMatchFilters": "Ningún favorito coincide con tus filtros."
+  },
+  "review": {
+    "yourNameOptional": "Tu nombre (opcional)",
+    "enterYourName": "Escribe tu nombre",
+    "rating": "Calificación",
+    "reviewCommentOptional": "Comentario (opcional)",
+    "writeYourReviewOptional": "Escribe tu reseña (opcional)",
+    "characters": "caracteres",
+    "submitReview": "Enviar reseña",
+    "reviewSubmitted": "¡Reseña enviada con éxito!",
+    "failedToSubmit": "No se pudo enviar la reseña. Inténtalo de nuevo.",
+    "validationError": "Error de validación",
+    "ratingBetween": "La calificación debe estar entre 1 y 5.",
+    "commentMin": "El comentario debe tener al menos 10 caracteres."
+  },
+  "filters": {
+    "filters": "Filtros",
+    "filtersAndSort": "Filtros y orden",
+    "search": "Buscar",
+    "searchPlaceholder": "Buscar productos...",
+    "category": "Categoría",
+    "minRating": "Calificación mínima",
+    "minPrice": "Precio mín.",
+    "maxPrice": "Precio máx.",
+    "sortBy": "Ordenar por",
+    "mostReviewed": "Más reseñados",
+    "newest": "Más nuevos",
+    "priceLowHigh": "Precio: menor a mayor",
+    "priceHighLow": "Precio: mayor a menor",
+    "ratingHighLow": "Calificación: mayor a menor",
+    "nameAZ": "Nombre: A–Z",
+    "showFavoritesOnly": "Mostrar solo favoritos"
+  },
+  "settings": {
+    "appearance": "Apariencia",
+    "theme": "Tema",
+    "systemDefault": "Predeterminado del sistema",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "fontSize": "Tamaño de fuente",
+    "small": "Pequeño",
+    "medium": "Mediano",
+    "large": "Grande",
+    "language": "Idioma",
+    "about": "Acerca de",
+    "demoFallback": "Esta app cambia automáticamente al modo demo cuando el backend no está disponible."
+  },
+  "languageNames": {
+    "en": "English",
+    "tr": "Türkçe",
+    "es": "Español"
+  },
+  "category": {
+    "electronics": "Electrónica",
+    "clothing": "Ropa",
+    "books": "Libros",
+    "homeKitchen": "Hogar y cocina",
+    "sportsOutdoors": "Deportes y aire libre"
+  }
+}

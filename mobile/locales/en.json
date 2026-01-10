@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "products": "Products",
+    "productDetails": "Product Details",
+    "addReview": "Add Review",
+    "settings": "Settings"
+  },
+  "common": {
+    "all": "All",
+    "favorites": "Favorites",
+    "apply": "Apply",
+    "clear": "Clear",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "error": "Error",
+    "success": "Success",
+    "loading": "Loading...",
+    "close": "Close",
+    "retry": "Retry"
+  },
+  "product": {
+    "description": "Description",
+    "reviews": "Reviews",
+    "noReviews": "No reviews yet.",
+    "noProductsFound": "No products found.",
+    "failedToLoad": "Failed to load product details.",
+    "smartReviewInsights": "Smart Review Insights",
+    "pros": "Pros",
+    "cons": "Cons",
+    "topTopics": "Top Topics",
+    "localBadge": "Local"
+  },
+  "favorites": {
+    "noFavoritesYet": "No favorites yet.",
+    "noFavoritesMatchFilters": "No favorites match your filters."
+  },
+  "review": {
+    "yourNameOptional": "Your Name (Optional)",
+    "enterYourName": "Enter your name",
+    "rating": "Rating",
+    "reviewCommentOptional": "Review Comment (Optional)",
+    "writeYourReviewOptional": "Write your review (optional)",
+    "characters": "characters",
+    "submitReview": "Submit Review",
+    "reviewSubmitted": "Review submitted successfully!",
+    "failedToSubmit": "Failed to submit review. Please try again.",
+    "validationError": "Validation Error",
+    "ratingBetween": "Rating must be between 1 and 5.",
+    "commentMin": "Comment must be at least 10 characters long."
+  },
+  "filters": {
+    "filters": "Filters",
+    "filtersAndSort": "Filters & Sort",
+    "search": "Search",
+    "searchPlaceholder": "Search products...",
+    "category": "Category",
+    "minRating": "Min rating",
+    "minPrice": "Min price",
+    "maxPrice": "Max price",
+    "sortBy": "Sort by",
+    "mostReviewed": "Most Reviewed",
+    "newest": "Newest",
+    "priceLowHigh": "Price: Low to High",
+    "priceHighLow": "Price: High to Low",
+    "ratingHighLow": "Rating: High to Low",
+    "nameAZ": "Name: A–Z",
+    "showFavoritesOnly": "Show favorites only"
+  },
+  "settings": {
+    "appearance": "Appearance",
+    "theme": "Theme",
+    "systemDefault": "System default",
+    "light": "Light",
+    "dark": "Dark",
+    "fontSize": "Font size",
+    "small": "Small",
+    "medium": "Medium",
+    "large": "Large",
+    "language": "Language",
+    "about": "About",
+    "demoFallback": "This app automatically falls back to demo mode when the backend is unavailable."
+  },
+  "languageNames": {
+    "en": "English",
+    "tr": "Türkçe",
+    "es": "Español"
+  },
+  "category": {
+    "electronics": "Electronics",
+    "clothing": "Clothing",
+    "books": "Books",
+    "homeKitchen": "Home & Kitchen",
+    "sportsOutdoors": "Sports & Outdoors"
+  }
+}

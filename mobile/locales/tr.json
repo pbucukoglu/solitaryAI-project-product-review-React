@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "products": "Ürünler",
+    "productDetails": "Ürün Detayları",
+    "addReview": "Yorum Ekle",
+    "settings": "Ayarlar"
+  },
+  "common": {
+    "all": "Tümü",
+    "favorites": "Favoriler",
+    "apply": "Uygula",
+    "clear": "Temizle",
+    "cancel": "İptal",
+    "ok": "Tamam",
+    "error": "Hata",
+    "success": "Başarılı",
+    "loading": "Yükleniyor...",
+    "close": "Kapat",
+    "retry": "Tekrar dene"
+  },
+  "product": {
+    "description": "Açıklama",
+    "reviews": "Yorumlar",
+    "noReviews": "Henüz yorum yok.",
+    "noProductsFound": "Ürün bulunamadı.",
+    "failedToLoad": "Ürün detayları yüklenemedi.",
+    "smartReviewInsights": "Akıllı Yorum İçgörüleri",
+    "pros": "Artılar",
+    "cons": "Eksiler",
+    "topTopics": "Öne Çıkan Konular",
+    "localBadge": "Yerel"
+  },
+  "favorites": {
+    "noFavoritesYet": "Henüz favori yok.",
+    "noFavoritesMatchFilters": "Filtrelerinize uyan favori bulunamadı."
+  },
+  "review": {
+    "yourNameOptional": "Adınız (Opsiyonel)",
+    "enterYourName": "Adınızı girin",
+    "rating": "Puan",
+    "reviewCommentOptional": "Yorum (Opsiyonel)",
+    "writeYourReviewOptional": "Yorumunuzu yazın (opsiyonel)",
+    "characters": "karakter",
+    "submitReview": "Yorumu Gönder",
+    "reviewSubmitted": "Yorum başarıyla gönderildi!",
+    "failedToSubmit": "Yorum gönderilemedi. Lütfen tekrar deneyin.",
+    "validationError": "Doğrulama Hatası",
+    "ratingBetween": "Puan 1 ile 5 arasında olmalıdır.",
+    "commentMin": "Yorum en az 10 karakter olmalıdır."
+  },
+  "filters": {
+    "filters": "Filtreler",
+    "filtersAndSort": "Filtreler ve Sıralama",
+    "search": "Ara",
+    "searchPlaceholder": "Ürün ara...",
+    "category": "Kategori",
+    "minRating": "Min puan",
+    "minPrice": "Min fiyat",
+    "maxPrice": "Max fiyat",
+    "sortBy": "Sırala",
+    "mostReviewed": "En Çok Yorumlanan",
+    "newest": "En Yeni",
+    "priceLowHigh": "Fiyat: Düşükten Yükseğe",
+    "priceHighLow": "Fiyat: Yüksekten Düşüğe",
+    "ratingHighLow": "Puan: Yüksekten Düşüğe",
+    "nameAZ": "İsim: A–Z",
+    "showFavoritesOnly": "Sadece favorileri göster"
+  },
+  "settings": {
+    "appearance": "Görünüm",
+    "theme": "Tema",
+    "systemDefault": "Sistem varsayılanı",
+    "light": "Açık",
+    "dark": "Koyu",
+    "fontSize": "Yazı boyutu",
+    "small": "Küçük",
+    "medium": "Orta",
+    "large": "Büyük",
+    "language": "Dil",
+    "about": "Hakkında",
+    "demoFallback": "Bu uygulama, backend erişilemediğinde otomatik olarak demo moduna geçer."
+  },
+  "languageNames": {
+    "en": "English",
+    "tr": "Türkçe",
+    "es": "Español"
+  },
+  "category": {
+    "electronics": "Elektronik",
+    "clothing": "Giyim",
+    "books": "Kitaplar",
+    "homeKitchen": "Ev & Mutfak",
+    "sportsOutdoors": "Spor & Outdoor"
+  }
+}
