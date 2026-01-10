@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { productService, reviewService } from '../services/api';
+import { productService, reviewService, translationService } from '../services/api';
 import { wishlistService } from '../services/wishlist';
 import { deviceService } from '../services/device';
 import { useTheme } from '../context/ThemeContext';
@@ -49,6 +49,8 @@ const ProductDetailScreen = ({ route, navigation }) => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState([]);
+  const [translatedDescription, setTranslatedDescription] = useState(null);
+  const [translatedCommentsById, setTranslatedCommentsById] = useState({});
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsError, setReviewsError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -87,6 +89,61 @@ const ProductDetailScreen = ({ route, navigation }) => {
   useEffect(() => {
     latestReviewsRef.current = reviews || [];
   }, [reviews]);
+
+  useEffect(() => {
+    // Reset translations when language changes or data changes
+    setTranslatedDescription(null);
+    setTranslatedCommentsById({});
+  }, [currentLang, product?.id, reviews?.length]);
+
+  useEffect(() => {
+    const run = async () => {
+      const lang = (currentLang || 'en').toLowerCase();
+      if (lang === 'en') return;
+      if (!product) return;
+
+      const texts = [];
+      const desc = (product?.description || '').trim();
+      const hasDesc = desc.length > 0;
+      if (hasDesc) texts.push(desc);
+
+      const commentPairs = [];
+      for (const r of reviews || []) {
+        const id = r?.id;
+        const c = (r?.comment || '').trim();
+        if (!id) continue;
+        if (!c) continue;
+        commentPairs.push([id, c]);
+        texts.push(c);
+      }
+
+      if (texts.length === 0) return;
+
+      try {
+        const res = await translationService.translateBatch(lang, texts);
+        const translations = Array.isArray(res?.translations) ? res.translations : null;
+        if (!translations || translations.length !== texts.length) return;
+
+        let idx = 0;
+        if (hasDesc) {
+          setTranslatedDescription(translations[idx] || desc);
+          idx += 1;
+        }
+
+        const nextMap = {};
+        for (const [id, original] of commentPairs) {
+          const translated = translations[idx] || original;
+          nextMap[id] = translated;
+          idx += 1;
+        }
+        setTranslatedCommentsById(nextMap);
+      } catch (e) {
+        // ignore: fall back to originals
+      }
+    };
+
+    run();
+  }, [currentLang, product, reviews]);
 
   useEffect(() => {
     latestReviewCountRef.current = Number(product?.reviewCount || 0);
@@ -583,7 +640,9 @@ const ProductDetailScreen = ({ route, navigation }) => {
         </View>
       )}
       {!!item.comment?.trim() && (
-        <Text style={[styles.reviewComment, { color: theme.colors.textSecondary }]}>{item.comment}</Text>
+        <Text style={[styles.reviewComment, { color: theme.colors.textSecondary }]}>
+          {translatedCommentsById?.[item.id] || item.comment}
+        </Text>
       )}
 
       <View style={styles.helpfulRow}>
@@ -814,7 +873,9 @@ const ProductDetailScreen = ({ route, navigation }) => {
           ) : (
             <>
               <Text style={[styles.descriptionTitle, { color: theme.colors.text }]}>{t('product.description')}</Text>
-              <Text style={[styles.description, { color: theme.colors.textSecondary }]}>{product?.description}</Text>
+              <Text style={[styles.description, { color: theme.colors.textSecondary }]}>
+                {translatedDescription || product?.description}
+              </Text>
             </>
           )}
         </View>

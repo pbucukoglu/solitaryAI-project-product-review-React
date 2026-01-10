@@ -169,4 +169,16 @@ export const reviewService = {
   },
 };
 
+export const translationService = {
+  translateBatch: async (lang, texts = []) => {
+    const safeLang = (lang || 'en').toString();
+    const safeTexts = Array.isArray(texts) ? texts.map((t) => (t == null ? '' : String(t))) : [];
+    return await fetchJsonWithTimeout(
+      `${API_BASE_URL}${API_ENDPOINTS.TRANSLATE}`,
+      { method: 'POST', body: JSON.stringify({ lang: safeLang, texts: safeTexts }) },
+      20000
+    );
+  },
+};
+
 export default api;

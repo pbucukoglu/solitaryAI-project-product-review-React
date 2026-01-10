@@ -38,6 +38,7 @@ export const API_BASE_URL = getApiBaseUrl();
 export const API_ENDPOINTS = {
   PRODUCTS: '/api/products',
   REVIEWS: '/api/reviews',
+  TRANSLATE: '/api/translate',
 };
 
 // Log the API URL in development for debugging
