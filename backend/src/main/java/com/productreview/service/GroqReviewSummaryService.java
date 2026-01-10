@@ -19,10 +19,13 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -30,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class GroqReviewSummaryService {
 
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(6);
     private static final Duration CACHE_TTL = Duration.ofMinutes(10);
 
     private final ProductRepository productRepository;
@@ -39,26 +42,24 @@ public class GroqReviewSummaryService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
 
-    private final Map<Long, CacheEntry> cache = new ConcurrentHashMap<>();
+    private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
-    public ReviewSummaryResponseDTO getReviewSummary(Long productId, int limit) {
-        CacheEntry cached = cache.get(productId);
+    public ReviewSummaryResponseDTO getReviewSummary(Long productId, int limit, String lang) {
+        String safeLang = normalizeLang(lang);
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found with id: " + productId));
+
+        Long reviewCount = product.getReviewCount() == null ? 0L : product.getReviewCount();
+        Double averageRating = product.getAverageRating() == null ? 0.0 : product.getAverageRating();
+
+        LocalDateTime latestCreatedAt = reviewRepository.findLatestCreatedAtByProductId(productId);
+        String versionKey = String.valueOf(latestCreatedAt) + "|" + reviewCount;
+        String cacheKey = productId + "|" + safeLang + "|" + versionKey;
+
+        CacheEntry cached = cache.get(cacheKey);
         if (cached != null && !cached.isExpired()) {
             return cached.value;
         }
-
-        String apiKey = System.getenv("GROQ_API_KEY");
-        if (apiKey == null || apiKey.trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "GROQ_API_KEY is not configured");
-        }
-
-        String model = System.getenv("GROQ_MODEL");
-        if (model == null || model.trim().isEmpty()) {
-            model = "llama-3.3-70b-versatile";
-        }
-
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found with id: " + productId));
 
         int safeLimit = Math.max(1, Math.min(100, limit));
 
@@ -73,48 +74,81 @@ public class GroqReviewSummaryService {
         }
 
         if (usable.isEmpty()) {
+            ReviewSummaryDTO local = buildLocalSummary(product, usable, safeLang);
             ReviewSummaryResponseDTO response = new ReviewSummaryResponseDTO(
                     productId,
+                    safeLang,
+                    "LOCAL",
+                    averageRating,
+                    reviewCount,
                     0L,
-                    new ReviewSummaryDTO("No reviews yet.", List.of(), List.of(), List.of()),
-                    Instant.now().toString(),
-                    "none"
+                    local.getTakeaway(),
+                    local.getPros(),
+                    local.getCons(),
+                    local.getTopTopics(),
+                    Instant.now().toString()
             );
-            cache.put(productId, new CacheEntry(response));
+            cache.put(cacheKey, new CacheEntry(response));
             return response;
         }
 
-        String prompt = buildPrompt(product, usable);
-
-        ReviewSummaryDTO summary;
-        try {
-            summary = callGroq(apiKey, prompt);
-        } catch (ResponseStatusException e) {
-            if (e.getStatusCode() == HttpStatus.SERVICE_UNAVAILABLE) {
-                throw e;
-            }
-            throw e;
+        ReviewSummaryDTO local = buildLocalSummary(product, usable, safeLang);
+        String apiKey = System.getenv("GROQ_API_KEY");
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            ReviewSummaryResponseDTO response = new ReviewSummaryResponseDTO(
+                    productId,
+                    safeLang,
+                    "LOCAL",
+                    averageRating,
+                    reviewCount,
+                    (long) usable.size(),
+                    local.getTakeaway(),
+                    local.getPros(),
+                    local.getCons(),
+                    local.getTopTopics(),
+                    Instant.now().toString()
+            );
+            cache.put(cacheKey, new CacheEntry(response));
+            return response;
         }
+
+        ReviewSummaryDTO ai = null;
+        try {
+            String prompt = buildPrompt(product, usable, safeLang);
+            ai = callGroq(apiKey, prompt, safeLang);
+        } catch (Exception ignored) {
+            ai = null;
+        }
+
+        ReviewSummaryDTO result = ai != null && ai.getTakeaway() != null ? clamp(ai) : local;
+        String source = (ai != null && ai.getTakeaway() != null) ? "AI" : "LOCAL";
 
         ReviewSummaryResponseDTO response = new ReviewSummaryResponseDTO(
                 productId,
+                safeLang,
+                source,
+                averageRating,
+                reviewCount,
                 (long) usable.size(),
-                summary,
-                Instant.now().toString(),
-                "groq"
+                result.getTakeaway(),
+                result.getPros(),
+                result.getCons(),
+                result.getTopTopics(),
+                Instant.now().toString()
         );
 
-        cache.put(productId, new CacheEntry(response));
+        cache.put(cacheKey, new CacheEntry(response));
         return response;
     }
 
-    private String buildPrompt(Product product, List<Review> reviews) {
+    private String buildPrompt(Product product, List<Review> reviews, String lang) {
         StringBuilder sb = new StringBuilder();
-        sb.append("You are an assistant that summarizes product reviews in a conservative, e-commerce style. ");
-        sb.append("Return ONLY a raw JSON object with keys: takeaway (string), pros (array of strings), cons (array of strings), topTopics (array of strings). ");
-        sb.append("Use neutral language like 'Most users mention...' or 'Some users report...'. ");
-        sb.append("Avoid absolute claims, adjectives like 'amazing'/'terrible', and emojis. ");
-        sb.append("Max 3 pros/cons, max 5 topics. No markdown, no code fences, no extra text.\n\n");
+        sb.append("You summarize product reviews in a conservative, e-commerce style. ");
+        sb.append("Return STRICT JSON ONLY with keys: takeaway (string), pros (array of strings), cons (array of strings), topTopics (array of strings). ");
+        sb.append("Use neutral language (no marketing). Avoid absolute claims. Avoid emojis. ");
+        sb.append("Do not mention AI/models. Preserve brand/model terms. ");
+        sb.append("Max 3 pros/cons, max 5 topics. No markdown, no code fences, no extra text. ");
+        sb.append("Output language: ").append(lang).append(".\n\n");
 
         // Category-specific topic guidance
         String category = product.getCategory() != null ? product.getCategory().toLowerCase() : "";
@@ -161,7 +195,7 @@ public class GroqReviewSummaryService {
         return sb.toString();
     }
 
-    private ReviewSummaryDTO callGroq(String apiKey, String prompt) {
+    private ReviewSummaryDTO callGroq(String apiKey, String prompt, String lang) {
         try {
             String model = System.getenv("GROQ_MODEL");
             if (model == null || model.trim().isEmpty()) {
@@ -174,7 +208,7 @@ public class GroqReviewSummaryService {
             req.put("messages", List.of(
                     Map.of(
                             "role", "system",
-                            "content", "Return ONLY a raw JSON object with keys: takeaway (string), pros (array of strings), cons (array of strings), topTopics (array of strings). Use neutral language like 'Most users mention...' or 'Some users report...'. Avoid absolute claims, adjectives like 'amazing'/'terrible', and emojis. Max 3 pros/cons, max 5 topics. Only include topics actually mentioned in reviews. No markdown, no code fences, no extra text."
+                            "content", "Return STRICT JSON ONLY with keys: takeaway (string), pros (array of strings), cons (array of strings), topTopics (array of strings). Neutral language only; no marketing; no absolute claims; no emojis; do not mention AI. Max 3 pros/cons, max 5 topics. Output language: " + lang + "."
                     ),
                     Map.of(
                             "role", "user",
@@ -223,12 +257,200 @@ public class GroqReviewSummaryService {
             if (takeaway == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Groq response missing takeaway");
             }
-            return new ReviewSummaryDTO(takeaway, pros, cons, topTopics);
+            return clamp(new ReviewSummaryDTO(takeaway, pros, cons, topTopics));
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Groq call failed");
         }
+    }
+
+    private ReviewSummaryDTO clamp(ReviewSummaryDTO in) {
+        if (in == null) return new ReviewSummaryDTO(null, List.of(), List.of(), List.of());
+        List<String> pros = clampList(in.getPros(), 3);
+        List<String> cons = clampList(in.getCons(), 3);
+        List<String> topics = clampList(in.getTopTopics(), 5);
+        return new ReviewSummaryDTO(
+                safeText(in.getTakeaway()),
+                pros,
+                cons,
+                topics
+        );
+    }
+
+    private List<String> clampList(List<String> in, int max) {
+        if (in == null || in.isEmpty()) return List.of();
+        List<String> out = new ArrayList<>();
+        for (String s : in) {
+            String t = safeText(s);
+            if (t == null) continue;
+            if (out.contains(t)) continue;
+            out.add(t);
+            if (out.size() >= max) break;
+        }
+        return out;
+    }
+
+    private String safeText(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        if (t.isEmpty()) return null;
+        if (t.length() > 220) t = t.substring(0, 220);
+        return t;
+    }
+
+    private String normalizeLang(String lang) {
+        String l = (lang == null ? "" : lang).trim().toLowerCase();
+        if (l.contains("-")) l = l.substring(0, l.indexOf('-'));
+        if (Objects.equals(l, "tr") || Objects.equals(l, "es") || Objects.equals(l, "en")) return l;
+        return "en";
+    }
+
+    private ReviewSummaryDTO buildLocalSummary(Product product, List<Review> reviews, String lang) {
+        List<Review> usable = reviews == null ? List.of() : reviews;
+        Map<String, Integer> topicCounts = new LinkedHashMap<>();
+        for (String k : topicLabels().keySet()) {
+            topicCounts.put(k, 0);
+        }
+
+        List<String> pros = new ArrayList<>();
+        List<String> cons = new ArrayList<>();
+        int used = 0;
+
+        for (Review r : usable) {
+            if (r == null) continue;
+            String comment = r.getComment();
+            if (comment == null) continue;
+            String text = comment.toLowerCase();
+            used++;
+
+            String snippet = firstSentence(comment);
+
+            if (r.getRating() != null && r.getRating() >= 4 && pros.size() < 3) {
+                if (snippet != null && !pros.contains(snippet)) pros.add(snippet);
+            }
+            if (r.getRating() != null && r.getRating() <= 2 && cons.size() < 3) {
+                if (snippet != null && !cons.contains(snippet)) cons.add(snippet);
+            }
+
+            for (Map.Entry<String, List<String>> e : topicKeywords(product.getCategory()).entrySet()) {
+                String topicKey = e.getKey();
+                for (String kw : e.getValue()) {
+                    if (kw == null || kw.isEmpty()) continue;
+                    if (text.contains(kw)) {
+                        topicCounts.put(topicKey, (topicCounts.getOrDefault(topicKey, 0) + 1));
+                        break;
+                    }
+                }
+            }
+        }
+
+        List<String> topTopics = new ArrayList<>();
+        topicCounts.entrySet().stream()
+                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .filter(e -> e.getValue() > 0)
+                .limit(5)
+                .forEach(e -> topTopics.add(topicLabel(lang, e.getKey())));
+
+        String posTopic = topTopics.size() > 0 ? topTopics.get(0) : null;
+        String negTopic = topTopics.size() > 1 ? topTopics.get(1) : null;
+
+        String takeaway = buildLocalTakeaway(lang, posTopic, negTopic);
+        if (takeaway == null) takeaway = defaultNoInsight(lang);
+
+        return new ReviewSummaryDTO(takeaway, clampList(pros, 3), clampList(cons, 3), clampList(topTopics, 5));
+    }
+
+    private String firstSentence(String text) {
+        if (text == null) return null;
+        String t = text.replace("\r", " ").replace("\n", " ").trim();
+        if (t.isEmpty()) return null;
+        String[] parts = t.split("[.!?]");
+        String s = parts.length > 0 ? parts[0].trim() : t;
+        if (s.length() > 90) s = s.substring(0, 90) + "…";
+        return s.isEmpty() ? null : s;
+    }
+
+    private String buildLocalTakeaway(String lang, String pos, String neg) {
+        if (pos == null && neg == null) return defaultNoInsight(lang);
+        if (pos != null && neg != null) {
+            if ("tr".equals(lang)) return "Kullanıcıların çoğu " + pos + " konusunu olumlu belirtirken, " + neg + " sıkça eleştiriliyor.";
+            if ("es".equals(lang)) return "La mayoría destaca " + pos + " de forma positiva, mientras que " + neg + " es una queja frecuente.";
+            return "Most users mention " + pos + " positively, while " + neg + " is a common complaint.";
+        }
+        if (pos != null) {
+            if ("tr".equals(lang)) return "Kullanıcıların çoğu " + pos + " konusunu olumlu belirtiyor.";
+            if ("es".equals(lang)) return "La mayoría menciona " + pos + " de forma positiva.";
+            return "Most users mention " + pos + " positively.";
+        }
+        if ("tr".equals(lang)) return neg + " konusu sıkça eleştiriliyor.";
+        if ("es".equals(lang)) return neg + " es una queja frecuente.";
+        return neg + " is a common complaint.";
+    }
+
+    private String defaultNoInsight(String lang) {
+        if ("tr".equals(lang)) return "Yorumlar farklı deneyimler içeriyor.";
+        if ("es".equals(lang)) return "Las reseñas muestran experiencias variadas.";
+        return "Reviews mention mixed experiences.";
+    }
+
+    private Map<String, Map<String, String>> topicLabels() {
+        Map<String, Map<String, String>> labels = new LinkedHashMap<>();
+        labels.put("battery", Map.of("en", "Battery", "tr", "Batarya", "es", "Batería"));
+        labels.put("performance", Map.of("en", "Performance", "tr", "Performans", "es", "Rendimiento"));
+        labels.put("price", Map.of("en", "Price", "tr", "Fiyat", "es", "Precio"));
+        labels.put("build", Map.of("en", "Build quality", "tr", "Malzeme kalitesi", "es", "Calidad de construcción"));
+        labels.put("camera", Map.of("en", "Camera", "tr", "Kamera", "es", "Cámara"));
+        labels.put("delivery", Map.of("en", "Delivery", "tr", "Kargo", "es", "Envío"));
+        labels.put("packaging", Map.of("en", "Packaging", "tr", "Paketleme", "es", "Embalaje"));
+        labels.put("comfort", Map.of("en", "Comfort", "tr", "Konfor", "es", "Comodidad"));
+        labels.put("usability", Map.of("en", "Usability", "tr", "Kullanım", "es", "Usabilidad"));
+        return labels;
+    }
+
+    private String topicLabel(String lang, String topicKey) {
+        Map<String, String> m = topicLabels().get(topicKey);
+        if (m == null) return topicKey;
+        return m.getOrDefault(lang, m.get("en"));
+    }
+
+    private Map<String, List<String>> topicKeywords(String category) {
+        String c = category == null ? "" : category.toLowerCase();
+        Map<String, List<String>> kws = new LinkedHashMap<>();
+        if (c.contains("electronics")) {
+            kws.put("battery", List.of("battery", "batarya", "pil", "charge", "şarj", "bateria", "carga"));
+            kws.put("performance", List.of("performance", "speed", "fast", "performans", "hız", "rapido", "rendimiento"));
+            kws.put("camera", List.of("camera", "kamera", "cámara", "photo", "foto"));
+            kws.put("build", List.of("build", "quality", "malzeme", "kalite", "construction", "construcción"));
+            kws.put("price", List.of("price", "fiyat", "precio", "expensive", "pahalı", "caro"));
+            kws.put("delivery", List.of("delivery", "shipping", "kargo", "envío"));
+            kws.put("packaging", List.of("package", "packaging", "paket", "embalaje"));
+            kws.put("usability", List.of("usability", "easy", "kullanım", "kolay", "usabilidad"));
+            return kws;
+        }
+        if (c.contains("clothing")) {
+            kws.put("comfort", List.of("comfortable", "comfort", "konfor", "rahat", "comodidad"));
+            kws.put("build", List.of("fabric", "quality", "kumaş", "kalite", "tela", "calidad"));
+            kws.put("price", List.of("price", "fiyat", "precio", "expensive", "pahalı", "caro"));
+            kws.put("delivery", List.of("delivery", "shipping", "kargo", "envío"));
+            kws.put("packaging", List.of("package", "packaging", "paket", "embalaje"));
+            kws.put("usability", List.of("fit", "size", "beden", "uyum", "talla", "ajuste"));
+            return kws;
+        }
+        if (c.contains("books")) {
+            kws.put("usability", List.of("translation", "çeviri", "traducción", "writing", "yazım", "prose", "estilo"));
+            kws.put("build", List.of("cover", "kapak", "paper", "kağıt", "portada", "papel"));
+            kws.put("price", List.of("price", "fiyat", "precio", "expensive", "pahalı", "caro"));
+            kws.put("delivery", List.of("delivery", "shipping", "kargo", "envío"));
+            kws.put("packaging", List.of("package", "packaging", "paket", "embalaje"));
+            return kws;
+        }
+        kws.put("build", List.of("quality", "kalite", "calidad", "material", "malzeme"));
+        kws.put("price", List.of("price", "fiyat", "precio", "expensive", "pahalı", "caro"));
+        kws.put("delivery", List.of("delivery", "shipping", "kargo", "envío"));
+        kws.put("packaging", List.of("package", "packaging", "paket", "embalaje"));
+        kws.put("usability", List.of("easy", "kolay", "usabilidad", "usable"));
+        return kws;
     }
 
     private String safeSnippet(String body) {

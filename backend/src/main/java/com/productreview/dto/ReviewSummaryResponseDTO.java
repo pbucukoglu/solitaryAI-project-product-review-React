@@ -9,8 +9,14 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ReviewSummaryResponseDTO {
     private Long productId;
-    private Long reviewCountUsed;
-    private ReviewSummaryDTO summary;
-    private String generatedAt;
+    private String lang;
     private String source;
+    private Double averageRating;
+    private Long reviewCount;
+    private Long reviewCountUsed;
+    private String takeaway;
+    private java.util.List<String> pros;
+    private java.util.List<String> cons;
+    private java.util.List<String> topTopics;
+    private String generatedAt;
 }

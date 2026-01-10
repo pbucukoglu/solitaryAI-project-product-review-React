@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { reviewService } from '../services/api';
 import { deviceService } from '../services/device';
+import { useTranslation } from 'react-i18next';
 
 import OfflineBanner from '../components/OfflineBanner';
 import { createTheme } from '../components/theme';
@@ -23,6 +24,7 @@ const AddReviewScreen = ({ route, navigation }) => {
   const { productId } = route.params;
   const colorScheme = useColorScheme();
   const theme = useMemo(() => createTheme(colorScheme), [colorScheme]);
+  const { t } = useTranslation();
 
   const [comment, setComment] = useState('');
   const [rating, setRating] = useState(5);
@@ -33,18 +35,18 @@ const AddReviewScreen = ({ route, navigation }) => {
 
   const handleSubmit = async () => {
     if (rating < 1 || rating > 5) {
-      Alert.alert('Validation Error', 'Rating must be between 1 and 5.');
+      Alert.alert(t('review.validationError'), t('review.ratingBetween'));
       return;
     }
 
     const rawComment = comment;
     const trimmedComment = rawComment.trim();
     if (rawComment.length > 0 && trimmedComment.length === 0) {
-      Alert.alert('Validation Error', 'Comment must be at least 10 characters long.');
+      Alert.alert(t('review.validationError'), t('review.commentMin'));
       return;
     }
     if (trimmedComment.length > 0 && trimmedComment.length < 10) {
-      Alert.alert('Validation Error', 'Comment must be at least 10 characters long.');
+      Alert.alert(t('review.validationError'), t('review.commentMin'));
       return;
     }
 
@@ -59,9 +61,9 @@ const AddReviewScreen = ({ route, navigation }) => {
         deviceId,
       });
 
-      Alert.alert('Success', 'Review submitted successfully!', [
+      Alert.alert(t('common.success'), t('review.reviewSubmitted'), [
         {
-          text: 'OK',
+          text: t('common.ok'),
           onPress: () => {
             navigation.goBack();
           },
@@ -69,7 +71,7 @@ const AddReviewScreen = ({ route, navigation }) => {
       ]);
     } catch (error) {
       console.error('Error submitting review:', error);
-      Alert.alert('Error', 'Failed to submit review. Please try again.');
+      Alert.alert(t('common.error'), t('review.failedToSubmit'));
     } finally {
       setSubmitting(false);
     }
@@ -119,31 +121,31 @@ const AddReviewScreen = ({ route, navigation }) => {
       <OfflineBanner theme={theme} />
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={[styles.form, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}> 
-          <Text style={[styles.label, { color: theme.colors.text }]}>Your Name (Optional)</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>{t('review.yourNameOptional')}</Text>
           <TextInput
             style={[styles.input, { color: theme.colors.text, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt }]}
             value={reviewerName}
             onChangeText={setReviewerName}
-            placeholder="Enter your name"
+            placeholder={t('review.enterYourName')}
             placeholderTextColor={theme.colors.textSecondary}
           />
 
-          <Text style={[styles.label, { color: theme.colors.text }]}>Rating</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>{t('review.rating')}</Text>
           {renderStarRating()}
 
-          <Text style={[styles.label, { color: theme.colors.text }]}>Review Comment (Optional)</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>{t('review.reviewCommentOptional')}</Text>
           <TextInput
             style={[styles.input, styles.textArea, { color: theme.colors.text, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceAlt }]}
             value={comment}
             onChangeText={setComment}
-            placeholder="Write your review (optional)"
+            placeholder={t('review.writeYourReviewOptional')}
             placeholderTextColor={theme.colors.textSecondary}
             multiline
             numberOfLines={6}
             textAlignVertical="top"
           />
           <Text style={[styles.charCount, { color: theme.colors.textSecondary }]}>
-            {comment.length} / 2000 characters
+            {comment.length} / 2000 {t('review.characters')}
           </Text>
 
           <TouchableOpacity
@@ -154,7 +156,7 @@ const AddReviewScreen = ({ route, navigation }) => {
             {submitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.submitButtonText}>Submit Review</Text>
+              <Text style={styles.submitButtonText}>{t('review.submitReview')}</Text>
             )}
           </TouchableOpacity>
         </View>

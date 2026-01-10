@@ -75,13 +75,14 @@ export const productService = {
     return await fetchJsonWithTimeout(`${API_BASE_URL}${API_ENDPOINTS.PRODUCTS}/${id}`, { method: 'GET' }, 15000);
   },
 
-  getReviewSummary: async (productId, limit = 30) => {
+  getReviewSummary: async (productId, limit = 30, lang = 'en') => {
     if (!productId) {
       throw new Error('Not found');
     }
     const safeLimit = Number.isFinite(Number(limit)) ? Number(limit) : 30;
+    const safeLang = (lang || 'en').toString();
     return await fetchJsonWithTimeout(
-      `${API_BASE_URL}${API_ENDPOINTS.PRODUCTS}/${productId}/review-summary?limit=${encodeURIComponent(safeLimit)}`,
+      `${API_BASE_URL}${API_ENDPOINTS.PRODUCTS}/${productId}/review-summary?limit=${encodeURIComponent(safeLimit)}&lang=${encodeURIComponent(safeLang)}`,
       { method: 'GET' },
       15000
     );

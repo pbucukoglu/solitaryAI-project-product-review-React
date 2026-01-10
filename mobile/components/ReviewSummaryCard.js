@@ -2,14 +2,17 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import Skeleton from './Skeleton';
+import { useTranslation } from 'react-i18next';
 
 const ReviewSummaryCard = ({
   loading,
   summary,
   empty,
+  source,
 }) => {
   const { theme } = useTheme();
-  const title = 'Smart Review Insights';
+  const { t } = useTranslation();
+  const title = t('product.smartReviewInsights');
 
   if (loading) {
     return (
@@ -36,8 +39,8 @@ const ReviewSummaryCard = ({
         <View style={styles.headerRow}>
           <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
         </View>
-        <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-          No reviews yet.
+        <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}> 
+          {t('product.noReviews')}
         </Text>
       </View>
     );
@@ -57,6 +60,11 @@ const ReviewSummaryCard = ({
     <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}> 
       <View style={styles.headerRow}>
         <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
+        {(source || '').toLowerCase() === 'local' && (
+          <View style={[styles.badge, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}> 
+            <Text style={[styles.badgeText, { color: theme.colors.textSecondary }]}>{t('product.localBadge')}</Text>
+          </View>
+        )}
       </View>
 
       {!!summary.takeaway && (
@@ -65,7 +73,7 @@ const ReviewSummaryCard = ({
 
       {(summary.pros?.length || 0) > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>Pros</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>{t('product.pros')}</Text>
           {summary.pros.map((p, idx) => (
             <Text key={`p-${idx}`} style={[styles.bullet, { color: theme.colors.textSecondary }]}>
               • {p}
@@ -76,7 +84,7 @@ const ReviewSummaryCard = ({
 
       {(summary.cons?.length || 0) > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>Cons</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>{t('product.cons')}</Text>
           {summary.cons.map((c, idx) => (
             <Text key={`c-${idx}`} style={[styles.bullet, { color: theme.colors.textSecondary }]}>
               • {c}
@@ -87,10 +95,10 @@ const ReviewSummaryCard = ({
 
       {(summary.topTopics?.length || 0) > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>Top Topics</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>{t('product.topTopics')}</Text>
           <View style={styles.topicsRow}>
             {summary.topTopics.map((t, idx) => (
-              <View key={`t-${idx}`} style={[styles.topicChip, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}>
+              <View key={`t-${idx}`} style={[styles.topicChip, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}> 
                 <Text style={[styles.topicText, { color: theme.colors.textSecondary }]}>{t}</Text>
               </View>
             ))}
@@ -116,6 +124,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
+  },
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '800',
   },
   title: {
     fontSize: 16,

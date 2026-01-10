@@ -77,9 +77,10 @@ public class ProductController {
     @GetMapping("/{productId}/review-summary")
     public ResponseEntity<ReviewSummaryResponseDTO> getReviewSummary(
             @PathVariable Long productId,
-            @RequestParam(defaultValue = "30") int limit
+            @RequestParam(defaultValue = "30") int limit,
+            @RequestParam(defaultValue = "en") String lang
     ) {
-        ReviewSummaryResponseDTO summary = groqReviewSummaryService.getReviewSummary(productId, limit);
+        ReviewSummaryResponseDTO summary = groqReviewSummaryService.getReviewSummary(productId, limit, lang);
         return ResponseEntity.ok(summary);
     }
 }

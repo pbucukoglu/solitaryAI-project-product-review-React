@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -32,6 +33,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     
     @Query("SELECT COUNT(r) FROM Review r WHERE r.product.id = :productId")
     Long countByProductId(@Param("productId") Long productId);
+
+    @Query("SELECT MAX(r.createdAt) FROM Review r WHERE r.product.id = :productId")
+    LocalDateTime findLatestCreatedAtByProductId(@Param("productId") Long productId);
 
     @Query("SELECT r.product.id, AVG(r.rating), COUNT(r) FROM Review r WHERE r.product.id IN :productIds GROUP BY r.product.id")
     List<Object[]> findAggregatesByProductIds(@Param("productIds") List<Long> productIds);

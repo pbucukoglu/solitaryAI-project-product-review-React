@@ -3,6 +3,9 @@ import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
+
+import './i18n';
 
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 
@@ -15,6 +18,7 @@ const Stack = createNativeStackNavigator();
 
 const AppShell = () => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
 
   const navTheme = theme?.isDark
     ? {
@@ -59,13 +63,13 @@ const AppShell = () => {
           <Stack.Screen 
             name="ProductList" 
             component={ProductListScreen}
-            options={{ title: 'Products' }}
+            options={{ title: t('nav.products') }}
           />
           <Stack.Screen 
             name="ProductDetail" 
             component={ProductDetailScreen}
             options={{
-              title: 'Product Details',
+              title: t('nav.productDetails'),
               animation: 'fade_from_bottom',
             }}
           />
@@ -73,7 +77,7 @@ const AppShell = () => {
             name="AddReview" 
             component={AddReviewScreen}
             options={{
-              title: 'Add Review',
+              title: t('nav.addReview'),
               animation: 'slide_from_bottom',
             }}
           />
@@ -81,7 +85,7 @@ const AppShell = () => {
             name="Settings" 
             component={SettingsScreen}
             options={{
-              title: 'Settings',
+              title: t('nav.settings'),
               animation: 'slide_from_right',
             }}
           />

@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { productService } from '../services/api';
 import { wishlistService } from '../services/wishlist';
 import { useTheme } from '../context/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 import OfflineBanner from '../components/OfflineBanner';
 import Skeleton, { SkeletonRow } from '../components/Skeleton';
@@ -26,6 +27,7 @@ import ProductCard from '../components/ProductCard';
 
 const ProductListScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
 
   const entranceProgress = useRef(new Animated.Value(0)).current;
 
@@ -100,20 +102,20 @@ const ProductListScreen = ({ navigation }) => {
 
   const sortOptions = useMemo(
     () => [
-      { label: 'Most Reviewed', sortBy: 'reviewCount', sortDir: 'DESC' },
-      { label: 'Newest', sortBy: 'createdAt', sortDir: 'DESC' },
-      { label: 'Price: Low to High', sortBy: 'price', sortDir: 'ASC' },
-      { label: 'Price: High to Low', sortBy: 'price', sortDir: 'DESC' },
-      { label: 'Rating: High to Low', sortBy: 'averageRating', sortDir: 'DESC' },
-      { label: 'Name: A–Z', sortBy: 'name', sortDir: 'ASC' },
+      { label: t('filters.mostReviewed'), sortBy: 'reviewCount', sortDir: 'DESC' },
+      { label: t('filters.newest'), sortBy: 'createdAt', sortDir: 'DESC' },
+      { label: t('filters.priceLowHigh'), sortBy: 'price', sortDir: 'ASC' },
+      { label: t('filters.priceHighLow'), sortBy: 'price', sortDir: 'DESC' },
+      { label: t('filters.ratingHighLow'), sortBy: 'averageRating', sortDir: 'DESC' },
+      { label: t('filters.nameAZ'), sortBy: 'name', sortDir: 'ASC' },
     ],
-    []
+    [t]
   );
 
   const selectedSortLabel = useMemo(() => {
     const found = sortOptions.find((s) => s.sortBy === sortBy && s.sortDir === sortDir);
     if (found) return found.label;
-    return 'Custom';
+    return '';
   }, [sortBy, sortDir, sortOptions]);
 
   useEffect(() => {
@@ -527,11 +529,10 @@ const ProductListScreen = ({ navigation }) => {
           <Ionicons name="search" size={18} color={theme.colors.textSecondary} />
           <TextInput
             style={[styles.searchInput, { color: theme.colors.text }]}
-            placeholder="Search products"
+            placeholder={t('filters.searchPlaceholder')}
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSubmitEditing={handleSearch}
-            returnKeyType="search"
             placeholderTextColor={theme.colors.textSecondary}
           />
         </View>
@@ -571,7 +572,7 @@ const ProductListScreen = ({ navigation }) => {
             onPress={() => setShowFavorites(false)}
             activeOpacity={0.85}
           >
-            <Text style={[styles.favoritesToggleText, { color: !showFavorites ? '#fff' : theme.colors.text }]}>All</Text>
+            <Text style={[styles.favoritesToggleText, { color: !showFavorites ? '#fff' : theme.colors.text }]}>{t('common.all')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -579,7 +580,7 @@ const ProductListScreen = ({ navigation }) => {
             onPress={() => setShowFavorites(true)}
             activeOpacity={0.85}
           >
-            <Text style={[styles.favoritesToggleText, { color: showFavorites ? '#fff' : theme.colors.text }]}>Favorites</Text>
+            <Text style={[styles.favoritesToggleText, { color: showFavorites ? '#fff' : theme.colors.text }]}>{t('common.favorites')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -589,7 +590,7 @@ const ProductListScreen = ({ navigation }) => {
         <View style={[styles.activeFilters, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}> 
           {selectedCategory && (
             <View style={[styles.filterChip, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}> 
-              <Text style={[styles.filterChipText, { color: theme.colors.text }]}>Category: {selectedCategory}</Text>
+              <Text style={[styles.filterChipText, { color: theme.colors.text }]}>{t('filters.category')}: {selectedCategory}</Text>
               <TouchableOpacity onPress={() => setSelectedCategory(null)}>
                 <Text style={[styles.filterChipClose, { color: theme.colors.text }]}>✕</Text>
               </TouchableOpacity>
@@ -597,7 +598,7 @@ const ProductListScreen = ({ navigation }) => {
           )}
           {minRating !== null && (
             <View style={[styles.filterChip, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}>
-              <Text style={[styles.filterChipText, { color: theme.colors.text }]}>Min rating: {minRating}+</Text>
+              <Text style={[styles.filterChipText, { color: theme.colors.text }]}>{t('filters.minRating')}: {minRating}+</Text>
               <TouchableOpacity onPress={() => setMinRating(null)}>
                 <Text style={[styles.filterChipClose, { color: theme.colors.text }]}>✕</Text>
               </TouchableOpacity>
@@ -605,7 +606,7 @@ const ProductListScreen = ({ navigation }) => {
           )}
           {(minPrice || maxPrice) && (
             <View style={[styles.filterChip, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}>
-              <Text style={[styles.filterChipText, { color: theme.colors.text }]}>Price: {minPrice || '0'} - {maxPrice || '∞'}</Text>
+              <Text style={[styles.filterChipText, { color: theme.colors.text }]}>{t('filters.minPrice')}: {minPrice || '0'} - {t('filters.maxPrice')}: {maxPrice || '∞'}</Text>
               <TouchableOpacity onPress={() => { setMinPrice(''); setMaxPrice(''); }}>
                 <Text style={[styles.filterChipClose, { color: theme.colors.text }]}>✕</Text>
               </TouchableOpacity>
@@ -614,7 +615,7 @@ const ProductListScreen = ({ navigation }) => {
           <View style={[styles.filterChip, { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.border }]}
           >
             <Text style={[styles.filterChipText, { color: theme.colors.text }]}>
-              Sort: {selectedSortLabel}
+              {t('filters.sortBy')}: {selectedSortLabel}
             </Text>
             <TouchableOpacity onPress={() => { setSortBy('reviewCount'); setSortDir('DESC'); }}>
               <Text style={[styles.filterChipClose, { color: theme.colors.text }]}>✕</Text>
@@ -647,16 +648,14 @@ const ProductListScreen = ({ navigation }) => {
               <>
                 <Text style={[styles.emptyText, { color: theme.colors.danger }]}>{loadError}</Text>
                 <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.colors.primary }]} onPress={() => loadProducts(0, false)}>
-                  <Text style={styles.retryButtonText}>Retry</Text>
+                  <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
                 {showFavorites
-                  ? (products.some((p) => favoriteIds.has(p.id))
-                      ? 'No favorites match your filters'
-                      : 'No favorites yet')
-                  : 'No products found'}
+                  ? (favoriteProducts.length > 0 ? t('favorites.noFavoritesMatchFilters') : t('favorites.noFavoritesYet'))
+                  : t('product.noProductsFound')}
               </Text>
             )}
           </View>
@@ -689,7 +688,7 @@ const ProductListScreen = ({ navigation }) => {
             ]}
           >
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Filters & Sort</Text>
+              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>{t('filters.filtersAndSort')}</Text>
               <TouchableOpacity onPress={() => setShowFilters(false)}>
                 <Text style={[styles.modalClose, { color: theme.colors.text }]}>✕</Text>
               </TouchableOpacity>
@@ -698,7 +697,7 @@ const ProductListScreen = ({ navigation }) => {
             <ScrollView style={styles.modalBody}>
               {/* Category Filter */}
               <View style={styles.filterSection}>
-                <Text style={[styles.filterSectionTitle, { color: theme.colors.text }]}>Category</Text>
+                <Text style={[styles.filterSectionTitle, { color: theme.colors.text }]}>{t('filters.category')}</Text>
                 <View style={styles.categoryContainer}>
                   {categories.map((category) => (
                     <TouchableOpacity
@@ -724,7 +723,7 @@ const ProductListScreen = ({ navigation }) => {
 
               {/* Sort Options */}
               <View style={styles.filterSection}>
-                <Text style={[styles.filterSectionTitle, { color: theme.colors.text }]}>Sort By</Text>
+                <Text style={[styles.filterSectionTitle, { color: theme.colors.text }]}>{t('filters.sortBy')}</Text>
                 {sortOptions.map((option) => (
                   <TouchableOpacity
                     key={`${option.sortBy}-${option.sortDir}`}

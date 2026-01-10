@@ -26,6 +26,8 @@ import { productService, reviewService } from '../services/api';
 import { wishlistService } from '../services/wishlist';
 import { deviceService } from '../services/device';
 import { useTheme } from '../context/ThemeContext';
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 
 import OfflineBanner from '../components/OfflineBanner';
 import ImageCarousel from '../components/ImageCarousel';
@@ -42,6 +44,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
   const { productId } = route.params;
   console.log('🔍 [ProductDetail] Received productId:', productId);
   const { theme } = useTheme();
+  const { t } = useTranslation();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -63,6 +66,9 @@ const ProductDetailScreen = ({ route, navigation }) => {
   const latestReviewsRef = React.useRef([]);
   const latestReviewCountRef = React.useRef(0);
   const lastFetchedSummaryForReviewCountRef = React.useRef(null);
+  const lastFetchedSummaryForLangRef = React.useRef(null);
+
+  const currentLang = (i18n.language || 'en').split('-')[0];
 
   useEffect(() => {
     latestReviewsRef.current = reviews || [];
@@ -97,11 +103,11 @@ const ProductDetailScreen = ({ route, navigation }) => {
       setProduct(productData);
     } catch (error) {
       console.error('Error loading product:', error);
-      Alert.alert('Error', 'Failed to load product details.');
+      Alert.alert(t('common.error'), t('product.failedToLoad'));
     } finally {
       setLoading(false);
     }
-  }, [productId]);
+  }, [productId, t]);
 
   const loadReviews = React.useCallback(async ({ page = 0, append = false } = {}) => {
     if (!productId) {
@@ -249,14 +255,15 @@ const ProductDetailScreen = ({ route, navigation }) => {
       setReviewSummaryError(null);
       setReviewSummaryLoading(false);
       lastFetchedSummaryForReviewCountRef.current = 0;
+      lastFetchedSummaryForLangRef.current = currentLang;
       return;
     }
 
     const currentCount = Number(latestReviewCountRef.current || 0);
     if (
       lastFetchedSummaryForReviewCountRef.current !== null &&
-      currentCount > 0 &&
-      lastFetchedSummaryForReviewCountRef.current === currentCount
+      lastFetchedSummaryForReviewCountRef.current === currentCount &&
+      lastFetchedSummaryForLangRef.current === currentLang
     ) {
       return;
     }
@@ -264,28 +271,29 @@ const ProductDetailScreen = ({ route, navigation }) => {
     try {
       setReviewSummaryLoading(true);
       setReviewSummaryError(null);
-      const resp = await productService.getReviewSummary(productId, 30);
-      const s = resp?.summary;
-      if (!s || typeof s.takeaway !== 'string') {
+      const resp = await productService.getReviewSummary(productId, 30, currentLang);
+      if (!resp || typeof resp.takeaway !== 'string') {
         throw new Error('Invalid summary');
       }
       setReviewSummary({
-        takeaway: s.takeaway || '',
-        pros: Array.isArray(s.pros) ? s.pros : [],
-        cons: Array.isArray(s.cons) ? s.cons : [],
-        topTopics: Array.isArray(s.topTopics) ? s.topTopics : [],
+        takeaway: resp.takeaway || '',
+        pros: Array.isArray(resp.pros) ? resp.pros : [],
+        cons: Array.isArray(resp.cons) ? resp.cons : [],
+        topTopics: Array.isArray(resp.topTopics) ? resp.topTopics : [],
       });
-      setReviewSummarySource(resp?.source || 'ai');
+      setReviewSummarySource((resp?.source || 'AI').toString());
       lastFetchedSummaryForReviewCountRef.current = currentCount;
+      lastFetchedSummaryForLangRef.current = currentLang;
     } catch (e) {
       setReviewSummary(localFallback);
       setReviewSummarySource('local');
       setReviewSummaryError(null);
       lastFetchedSummaryForReviewCountRef.current = currentCount;
+      lastFetchedSummaryForLangRef.current = currentLang;
     } finally {
       setReviewSummaryLoading(false);
     }
-  }, [productId]);
+  }, [productId, buildLocalDeterministicSummary, currentLang]);
 
   const refreshAll = React.useCallback(async () => {
     try {
@@ -304,7 +312,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
     if (!productId) return;
     if (cnt <= 0) return;
     loadReviewSummary();
-  }, [productId, product?.reviewCount, loadReviewSummary]);
+  }, [productId, product?.reviewCount, currentLang, loadReviewSummary]);
 
   const loadDeviceId = React.useCallback(async () => {
     try {
@@ -775,6 +783,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
           loading={reviewSummaryLoading}
           summary={reviewSummary}
           empty={(Number(product?.reviewCount || 0) || reviews.length) === 0}
+          source={reviewSummarySource}
         />
 
         <View style={[styles.productSection, { backgroundColor: theme.colors.surface }]}> 
