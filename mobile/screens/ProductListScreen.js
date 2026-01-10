@@ -132,16 +132,17 @@ const ProductListScreen = ({ navigation }) => {
     const norm = raw.toLowerCase();
     if (!raw) return null;
 
-    if (norm === 'electronics' || norm === t('category.electronics').toLowerCase()) return 'Electronics';
-    if (norm === 'clothing' || norm === t('category.clothing').toLowerCase()) return 'Clothing';
-    if (norm === 'books' || norm === t('category.books').toLowerCase()) return 'Books';
+    // Backend category values are canonical uppercase strings in production.
+    if (norm === 'electronics' || norm === t('category.electronics').toLowerCase()) return 'ELECTRONICS';
+    if (norm === 'clothing' || norm === t('category.clothing').toLowerCase()) return 'CLOTHING';
+    if (norm === 'books' || norm === t('category.books').toLowerCase()) return 'BOOKS';
     if (
       norm === 'home & kitchen' ||
       norm === 'home and kitchen' ||
       norm === 'homekitchen' ||
       norm === t('category.homeKitchen').toLowerCase()
     ) {
-      return 'Home & Kitchen';
+      return 'HOME & KITCHEN';
     }
     if (
       norm === 'sports & outdoors' ||
@@ -149,10 +150,14 @@ const ProductListScreen = ({ navigation }) => {
       norm === 'sportsoutdoors' ||
       norm === t('category.sportsOutdoors').toLowerCase()
     ) {
-      return 'Sports & Outdoors';
+      return 'SPORTS & OUTDOORS';
     }
 
-    return raw;
+    // If backend already returned a canonical value and it is stored in state, keep it.
+    if (raw === raw.toUpperCase()) return raw;
+
+    // Fallback: try uppercase to match production.
+    return raw.toUpperCase();
   }, [t]);
 
   const selectedSortLabel = useMemo(() => {
