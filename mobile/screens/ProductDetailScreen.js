@@ -706,7 +706,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
           </View>
         </View>
         <View style={[styles.ratingBadge, { backgroundColor: theme.colors.primary }]}> 
-          <Text style={styles.ratingBadgeText}> {item.rating}/5</Text>
+          <Text style={styles.ratingBadgeText}> ⭐ {item.rating}/5</Text>
         </View>
       </View>
       {isOwn && (

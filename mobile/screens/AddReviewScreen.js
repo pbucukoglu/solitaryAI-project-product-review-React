@@ -11,19 +11,17 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  useColorScheme,
 } from 'react-native';
 import { reviewService } from '../services/api';
 import { deviceService } from '../services/device';
 import { useTranslation } from 'react-i18next';
 
 import OfflineBanner from '../components/OfflineBanner';
-import { createTheme } from '../components/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const AddReviewScreen = ({ route, navigation }) => {
   const { productId } = route.params;
-  const colorScheme = useColorScheme();
-  const theme = useMemo(() => createTheme(colorScheme), [colorScheme]);
+  const { theme } = useTheme();
   const { t } = useTranslation();
 
   const [comment, setComment] = useState('');
